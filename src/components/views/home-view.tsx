@@ -223,10 +223,10 @@ function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; pur
   // No purchases today → nothing to recover. Show a neutral state.
   if (purchaseCost <= 0) {
     return (
-      <Card className="card-raised p-4">
+      <Card className="card-raised p-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Purchase Recovery</p>
-        <p className="mt-2 text-3xl font-bold tnum text-muted-foreground">—</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">No purchases today</p>
+        <p className="mt-1.5 text-2xl font-bold tnum text-muted-foreground">—</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">No purchases today</p>
         {sales > 0 && (
           <p className="mt-0.5 text-[11px] text-muted-foreground tnum">{formatBirr(sales, cur)} sales</p>
         )}
@@ -245,36 +245,36 @@ function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; pur
   const color = isBreakEven ? "#2563EB" : isAbove ? "#16803C" : "#C53030";
 
   return (
-    <Card className="card-raised p-4">
+    <Card className="card-raised p-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Purchase Recovery</p>
 
       {/* Main percentage in status color */}
-      <p className="mt-2 text-4xl font-bold tnum leading-none" style={{ color }}>
+      <p className="mt-1.5 text-2xl font-bold tnum leading-none" style={{ color }}>
         {pct.toFixed(1)}%
       </p>
 
       {/* Sales line */}
-      <p className="mt-3 text-[12px] tnum text-foreground/80">
+      <p className="mt-1.5 text-[11px] tnum text-foreground/80">
         {formatBirr(sales, cur)} sales
       </p>
 
       {/* Difference / break-even line in status color */}
       {isBreakEven ? (
-        <p className="mt-0.5 text-[12px] font-semibold" style={{ color }}>
+        <p className="mt-0.5 text-[11px] font-semibold" style={{ color }}>
           Purchase cost recovered
         </p>
       ) : isAbove ? (
-        <p className="mt-0.5 text-[12px] font-semibold tnum" style={{ color }}>
+        <p className="mt-0.5 text-[11px] font-semibold tnum" style={{ color }}>
           {formatBirr(diff, cur)} above purchase cost
         </p>
       ) : (
-        <p className="mt-0.5 text-[12px] font-semibold tnum" style={{ color }}>
+        <p className="mt-0.5 text-[11px] font-semibold tnum" style={{ color }}>
           {formatBirr(Math.abs(diff), cur)} below purchase cost
         </p>
       )}
 
       {/* Recovery bar (0–200% scale, break-even marker at 50% = 100%) */}
-      <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-muted/60">
+      <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-muted/60">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${Math.min(100, (pct / 200) * 100)}%`, backgroundColor: color }}
@@ -301,24 +301,24 @@ function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; 
   const label = isZero ? "Break Even" : isPositive ? "Money Made" : "Money Lost";
 
   return (
-    <Card className="card-raised p-4">
+    <Card className="card-raised p-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Net Result</p>
 
       {/* Net result amount in status color */}
-      <p className="mt-2 text-3xl font-bold tnum leading-none" style={{ color }}>
+      <p className="mt-1.5 text-2xl font-bold tnum leading-none" style={{ color }}>
         {net < 0 ? "−" : ""}{formatBirr(Math.abs(net), cur)}
       </p>
 
       {/* Status label in status color */}
-      <p className="mt-2 text-[12px] font-bold uppercase tracking-wider" style={{ color }}>
+      <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wider" style={{ color }}>
         {label}
       </p>
 
       {/* Breakdown */}
       {isZero ? (
-        <p className="mt-2 text-[11px] text-muted-foreground">No money made or lost</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">No money made or lost</p>
       ) : (
-        <div className="mt-2 space-y-0.5 text-[11px] tnum text-foreground/70">
+        <div className="mt-1 space-y-0.5 text-[11px] tnum text-foreground/70">
           <p>{formatBirr(sales, cur)} sales</p>
           <p>− {formatBirr(purchaseCost, cur)} purchase</p>
           <p>− {formatBirr(expenses, cur)} expenses</p>
@@ -335,10 +335,10 @@ function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; 
 function SoldTodayCard({ kgSold, kgBought }: { kgSold: number; kgBought: number }) {
   const pctSold = kgBought > 0 ? Math.round((kgSold / kgBought) * 100) : null;
   return (
-    <Card className="card-raised p-4">
+    <Card className="card-raised p-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Sold Today</p>
-      <p className="mt-2 text-2xl font-bold tnum leading-none">{formatKg(kgSold)}</p>
-      <p className="mt-2 text-[11px] text-muted-foreground tnum">
+      <p className="mt-1.5 text-xl font-bold tnum leading-none">{formatKg(kgSold)}</p>
+      <p className="mt-1.5 text-[11px] text-muted-foreground tnum">
         {pctSold !== null ? `${pctSold}% sold` : "—"}
       </p>
     </Card>
@@ -355,10 +355,10 @@ function SoldTodayCard({ kgSold, kgBought }: { kgSold: number; kgBought: number 
 function BoughtTodayCard({ kgBought, kgSold }: { kgBought: number; kgSold: number }) {
   const remaining = Math.max(0, Math.round((kgBought - kgSold) * 100) / 100);
   return (
-    <Card className="card-raised p-4">
+    <Card className="card-raised p-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Bought Today</p>
-      <p className="mt-2 text-2xl font-bold tnum leading-none">{formatKg(kgBought)}</p>
-      <p className="mt-2 text-[11px] text-muted-foreground tnum">
+      <p className="mt-1.5 text-xl font-bold tnum leading-none">{formatKg(kgBought)}</p>
+      <p className="mt-1.5 text-[11px] text-muted-foreground tnum">
         {kgBought > 0 ? `${formatKg(remaining)} left` : "—"}
       </p>
     </Card>

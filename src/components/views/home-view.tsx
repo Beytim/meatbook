@@ -79,53 +79,52 @@ export function HomeView() {
         } />
       </div>
 
-      {/* Today's sales — header + Take Home / Eat Here rows */}
-      <Card className="mb-2 overflow-hidden card-raised bg-card">
-        <div className="bg-gradient-to-br from-primary/12 via-card to-card p-3">
-          <div className="flex items-center justify-between">
+      {/* ─── Today's Sales — clean hero card ─── */}
+      <Card className="mb-3 overflow-hidden card-raised bg-card">
+        <div className="bg-gradient-to-br from-primary/12 via-card to-card px-4 py-3.5">
+          <div className="flex items-end justify-between">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Today&apos;s Sales</p>
-              <p className="text-2xl font-bold tnum tracking-tight leading-tight">{formatBirr(today.revenue, cur)}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Today&apos;s Sales</p>
+              <p className="mt-0.5 text-2xl font-bold tnum tracking-tight">{formatBirr(today.revenue, cur)}</p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] text-muted-foreground tnum">{today.salesCount} {today.salesCount === 1 ? "sale" : "sales"}</p>
-              <p className="text-[11px] text-muted-foreground tnum">{formatKg(today.kgSold)} sold</p>
+              <p className="text-xs text-muted-foreground tnum">{today.salesCount} {today.salesCount === 1 ? "sale" : "sales"}</p>
+              <p className="text-xs text-muted-foreground tnum">{formatKg(today.kgSold)}</p>
             </div>
           </div>
         </div>
         <div className="grid grid-cols-2 divide-x divide-border/60">
-          <div className="p-2.5">
-            <div className="flex items-center gap-1.5">
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-amber-400" />
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Take Home</p>
-              <span className="ml-auto text-[10px] text-muted-foreground tnum">{today.takeHome.count}</span>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Take Home</p>
             </div>
-            <p className="mt-0.5 text-sm font-bold tnum text-amber-400">{formatBirr(today.takeHome.revenue, cur)}</p>
-            <p className="text-[10px] text-muted-foreground tnum">{formatKg(today.takeHome.kg)}</p>
+            <p className="mt-1 text-base font-bold tnum">{formatBirr(today.takeHome.revenue, cur)}</p>
+            <p className="text-[11px] text-muted-foreground tnum">{today.takeHome.count} sales · {formatKg(today.takeHome.kg)}</p>
           </div>
-          <div className="p-2.5">
-            <div className="flex items-center gap-1.5">
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Eat Here</p>
-              <span className="ml-auto text-[10px] text-muted-foreground tnum">{today.eatHere.count}</span>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Eat Here</p>
             </div>
-            <p className="mt-0.5 text-sm font-bold tnum text-emerald-400">{formatBirr(today.eatHere.revenue, cur)}</p>
-            <p className="text-[10px] text-muted-foreground tnum">{formatKg(today.eatHere.kg)}</p>
+            <p className="mt-1 text-base font-bold tnum">{formatBirr(today.eatHere.revenue, cur)}</p>
+            <p className="text-[11px] text-muted-foreground tnum">{today.eatHere.count} sales · {formatKg(today.eatHere.kg)}</p>
           </div>
         </div>
       </Card>
 
-      {/* Purchase Recovery + Net Result — compact side by side */}
-      <div className="mb-2 grid grid-cols-2 gap-2">
+      {/* ─── Recovery + Net Result — side by side ─── */}
+      <div className="mb-3 grid grid-cols-2 gap-2.5">
         <PurchaseRecoveryCard sales={data.flow.todayRevenue} purchaseCost={data.flow.purchaseAmount} cur={cur} />
         <NetResultCard sales={data.flow.todayRevenue} purchaseCost={data.flow.purchaseAmount} expenses={data.flow.todayExpenses} cur={cur} />
       </div>
 
-      {/* Sold Today + Bought Today — compact side by side */}
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <SoldTodayCard kgSold={data.flow.todayKgSold} kgBought={data.flow.purchaseKg} />
-        <BoughtTodayCard kgBought={data.flow.purchaseKg} kgSold={data.flow.todayKgSold} />
-      </div>
+      {/* ─── Stock Flow — single unified card (no redundancy) ─── */}
+      <StockFlowCard
+        kgSold={data.flow.todayKgSold}
+        kgBought={data.flow.purchaseKg}
+        cur={cur}
+      />
 
       {/* ─── Today's Purchases — animal-type breakdown ─── */}
       {data.todayPurchases.count > 0 && (
@@ -205,139 +204,97 @@ function QuickAction({ label, icon, onClick, tone }: { label: string; icon: Reac
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// 1. PURCHASE RECOVERY CARD
-// How much of today's meat purchase cost has been recovered by today's sales.
-// Formula: Sales ÷ Purchase Cost × 100. Based on MONEY, not kg.
-// Status: below 100% = RED, exactly 100% = BLUE, above 100% = GREEN.
+// PURCHASE RECOVERY — % of purchase cost recovered by sales
 // ════════════════════════════════════════════════════════════════════════
 function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; purchaseCost: number; cur: string }) {
   if (purchaseCost <= 0) {
     return (
-      <Card className="card-raised bg-card p-2.5">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Purchase Recovery</p>
+      <Card className="card-raised bg-card p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Recovery</p>
         <p className="mt-1 text-lg font-bold tnum text-muted-foreground">—</p>
-        <p className="text-[10px] text-muted-foreground">No purchases today</p>
+        <p className="text-[10px] text-muted-foreground">No purchases</p>
       </Card>
     );
   }
-
   const pct = (sales / purchaseCost) * 100;
   const diff = sales - purchaseCost;
   const isBreakEven = Math.abs(diff) < 0.005;
   const isAbove = diff > 0;
   const color = isBreakEven ? "#2563EB" : isAbove ? "#16803C" : "#C53030";
-  const barPct = Math.min(100, (pct / 200) * 100);
-
   return (
-    <Card className="card-raised bg-card p-2.5">
-      <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Purchase Recovery</p>
-        <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color }}>
-          {isBreakEven ? "EVEN" : isAbove ? "PROFIT" : "AT LOSS"}
-        </span>
-      </div>
-      <p className="mt-0.5 text-lg font-bold tnum leading-none" style={{ color }}>
-        {pct.toFixed(1)}%
-      </p>
-      {/* Recovery bar with 100% marker */}
-      <div className="relative mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/60">
-        <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, backgroundColor: color }} />
+    <Card className="card-raised bg-card p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Recovery</p>
+      <p className="mt-1 text-lg font-bold tnum leading-none" style={{ color }}>{pct.toFixed(1)}%</p>
+      <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-muted/60">
+        <div className="h-full rounded-full" style={{ width: `${Math.min(100, (pct / 200) * 100)}%`, backgroundColor: color }} />
         <div className="absolute left-1/2 top-0 h-full w-px bg-foreground/40" />
       </div>
-      <p className="mt-1 text-[10px] tnum text-muted-foreground">
-        {formatBirr(sales, cur)} in
+      <p className="mt-1.5 text-[10px] font-medium tnum" style={{ color }}>
+        {isBreakEven ? "Cost recovered" : isAbove ? `+${formatBirr(diff, cur)}` : `−${formatBirr(Math.abs(diff), cur)}`}
       </p>
-      {isBreakEven ? (
-        <p className="text-[10px] font-semibold" style={{ color }}>Cost recovered</p>
-      ) : isAbove ? (
-        <p className="text-[10px] font-semibold tnum" style={{ color }}>+{formatBirr(diff, cur)} surplus</p>
-      ) : (
-        <p className="text-[10px] font-semibold tnum" style={{ color }}>−{formatBirr(Math.abs(diff), cur)} uncovered</p>
-      )}
     </Card>
   );
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// 2. NET RESULT CARD
-// Net Result = Sales − Purchase Cost − Actual Expenses
-// Status: positive = GREEN, negative = RED, exactly zero = BLUE.
+// NET RESULT — Sales − Purchase − Expenses
 // ════════════════════════════════════════════════════════════════════════
 function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; purchaseCost: number; expenses: number; cur: string }) {
   const net = Math.round((sales - purchaseCost - expenses) * 100) / 100;
   const isZero = Math.abs(net) < 0.005;
   const isPositive = net > 0;
   const color = isZero ? "#2563EB" : isPositive ? "#16803C" : "#C53030";
-  const label = isZero ? "Break Even" : isPositive ? "Money Made" : "Money Lost";
-  const arrow = isZero ? "→" : isPositive ? "↑" : "↓";
-
   return (
-    <Card className="card-raised bg-card p-2.5">
-      <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Net Result</p>
-        <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color }}>{label}</span>
-      </div>
-      <p className="mt-0.5 text-lg font-bold tnum leading-none" style={{ color }}>
-        <span className="mr-0.5">{arrow}</span>{net < 0 ? "−" : ""}{formatBirr(Math.abs(net), cur)}
+    <Card className="card-raised bg-card p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Net Result</p>
+      <p className="mt-1 text-lg font-bold tnum leading-none" style={{ color }}>
+        {net < 0 ? "−" : isPositive ? "+" : ""}{formatBirr(Math.abs(net), cur)}
       </p>
-      <div className="mt-1.5 space-y-0.5 text-[10px] tnum text-muted-foreground">
-        <p>+ {formatBirr(sales, cur)} <span className="text-muted-foreground/60">sales</span></p>
-        <p>− {formatBirr(purchaseCost, cur)} <span className="text-muted-foreground/60">purchase</span></p>
-        <p>− {formatBirr(expenses, cur)} <span className="text-muted-foreground/60">expenses</span></p>
+      <div className="mt-2 space-y-0.5 text-[10px] tnum text-muted-foreground">
+        <p>+ {formatBirr(sales, cur)}</p>
+        <p>− {formatBirr(purchaseCost, cur)}</p>
+        <p>− {formatBirr(expenses, cur)}</p>
       </div>
     </Card>
   );
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// 3. SOLD TODAY — kg sold + % of bought kg sold, with progress bar
+// STOCK FLOW — single unified card: Bought → Sold → Remaining
+// No duplicate numbers. One clear picture of today's meat flow.
 // ════════════════════════════════════════════════════════════════════════
-function SoldTodayCard({ kgSold, kgBought }: { kgSold: number; kgBought: number }) {
-  const pctSold = kgBought > 0 ? Math.round((kgSold / kgBought) * 100) : null;
-  const barPct = pctSold !== null ? Math.min(100, pctSold) : 0;
-  const barColor = pctSold !== null && pctSold >= 50 ? "bg-emerald-500" : "bg-amber-500";
-
-  return (
-    <Card className="card-raised bg-card p-2.5">
-      <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Sold Today</p>
-        <span className="text-[9px] font-bold tnum text-emerald-400">{pctSold !== null ? `${pctSold}%` : "—"}</span>
-      </div>
-      <p className="mt-0.5 text-lg font-bold tnum leading-none">{formatKg(kgSold)}</p>
-      {pctSold !== null && (
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/60">
-          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${barPct}%` }} />
-        </div>
-      )}
-      <p className="mt-1 text-[10px] text-muted-foreground tnum">
-        {pctSold !== null ? `${formatKg(kgBought - kgSold)} to break even` : "No purchases"}
-      </p>
-    </Card>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// 4. BOUGHT TODAY — kg bought + remaining, with progress bar
-// ════════════════════════════════════════════════════════════════════════
-function BoughtTodayCard({ kgBought, kgSold }: { kgBought: number; kgSold: number }) {
+function StockFlowCard({ kgSold, kgBought, cur: _cur }: { kgSold: number; kgBought: number; cur: string }) {
   const remaining = Math.max(0, Math.round((kgBought - kgSold) * 100) / 100);
   const soldPct = kgBought > 0 ? Math.round((kgSold / kgBought) * 100) : 0;
+  const barColor = soldPct >= 50 ? "bg-emerald-500" : soldPct > 0 ? "bg-amber-500" : "bg-muted-foreground/40";
 
   return (
-    <Card className="card-raised bg-card p-2.5">
-      <div className="flex items-center justify-between">
-        <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Bought Today</p>
-        <span className="text-[9px] font-bold tnum text-amber-400">{formatKg(remaining)} left</span>
+    <Card className="mb-3 card-raised bg-card p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Stock Flow Today</p>
+        <span className="text-[10px] font-bold tnum text-muted-foreground">{soldPct}% sold</span>
       </div>
-      <p className="mt-0.5 text-lg font-bold tnum leading-none">{formatKg(kgBought)}</p>
+      {/* Three-column flow: Bought → Sold → Left */}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-lg bg-amber-500/8 px-2 py-2">
+          <p className="text-[9px] font-semibold uppercase tracking-wide text-amber-400">Bought</p>
+          <p className="mt-0.5 text-sm font-bold tnum">{formatKg(kgBought)}</p>
+        </div>
+        <div className="rounded-lg bg-emerald-500/8 px-2 py-2">
+          <p className="text-[9px] font-semibold uppercase tracking-wide text-emerald-400">Sold</p>
+          <p className="mt-0.5 text-sm font-bold tnum">{formatKg(kgSold)}</p>
+        </div>
+        <div className="rounded-lg bg-muted/40 px-2 py-2">
+          <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Left</p>
+          <p className="mt-0.5 text-sm font-bold tnum">{formatKg(remaining)}</p>
+        </div>
+      </div>
+      {/* Single progress bar — sold portion of bought */}
       {kgBought > 0 && (
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/60">
-          <div className="h-full rounded-full bg-amber-500" style={{ width: `${100 - soldPct}%` }} />
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/60">
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, soldPct)}%` }} />
         </div>
       )}
-      <p className="mt-1 text-[10px] text-muted-foreground tnum">
-        {kgBought > 0 ? `${soldPct}% sold · ${formatKg(remaining)} in stock` : "—"}
-      </p>
     </Card>
   );
 }

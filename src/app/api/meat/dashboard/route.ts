@@ -100,16 +100,20 @@ export async function GET() {
   // Coverage: did sales cover purchases? 0 = none, 1 = break-even, >1 = surplus
   const purchaseCoverage = purchaseAmount > 0 ? todayRevenue / purchaseAmount : (todayRevenue > 0 ? 1 : 0);
 
-  // Compute expected cash for the open drawer session (reconciled with cash control)
+  // Compute expected cash for the open drawer session.
+  // This is TODAY's expected: opening + today's cash sales - today's cash
+  // expenses - today's cash purchases + today's cash money-in - today's cash
+  // money-out. The dashboard is "Today's business" so we use today's range.
   let expectedCash = openSession?.opening ?? 0;
   if (openSession) {
-    const sessionStart = openSession.openedAt;
+    const cashWhere = { createdAt: { gte: today.from, lte: today.to } };
     const [cashSales, cashExpenses, cashPurchases, cashMovesIn, cashMovesOut] = await Promise.all([
-      db.sale.aggregate({ where: { status: "COMPLETED", paymentMethod: "CASH", createdAt: { gte: sessionStart } }, _sum: { total: true } }),
-      db.expense.aggregate({ where: { paymentMethod: "CASH", createdAt: { gte: sessionStart } }, _sum: { amount: true } }),
-      db.purchase.aggregate({ where: { paymentMethod: "CASH", createdAt: { gte: sessionStart } }, _sum: { total: true } }),
-      db.moneyMove.aggregate({ where: { account: "CASH", direction: "IN", createdAt: { gte: sessionStart } }, _sum: { amount: true } }),
-      db.moneyMove.aggregate({ where: { account: "CASH", direction: "OUT", createdAt: { gte: sessionStart } }, _sum: { amount: true } }),
+      db.sale.aggregate({ where: { status: "COMPLETED", paymentMethod: "CASH", ...cashWhere }, _sum: { total: true } }),
+      db.expense.aggregate({ where: { paymentMethod: "CASH", ...cashWhere }, _sum: { amount: true } }),
+      db.purchase.aggregate({ where: { paymentMethod: "CASH", ...cashWhere }, _sum: { total: true } }),
+      // Exclude "Opening balance" moves — they're starting balances, not today's activity
+      db.moneyMove.aggregate({ where: { account: "CASH", direction: "IN", ...cashWhere, reason: { not: "Opening balance" } }, _sum: { amount: true } }),
+      db.moneyMove.aggregate({ where: { account: "CASH", direction: "OUT", ...cashWhere, reason: { not: "Opening balance" } }, _sum: { amount: true } }),
     ]);
     expectedCash = (openSession.opening)
       + Number(cashSales._sum.total ?? 0)

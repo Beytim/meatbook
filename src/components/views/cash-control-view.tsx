@@ -273,6 +273,11 @@ function SessionRow({ session: s }: { session: CashSession }) {
                 {s.note.includes("Transferred") ? "🏦" : "📝"} {s.note}
               </p>
             )}
+            {!s.note && (
+              <p className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                No transfer
+              </p>
+            )}
           </div>
         </div>
         <div className="shrink-0 text-right">

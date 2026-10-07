@@ -266,8 +266,13 @@ function SessionRow({ session: s }: { session: CashSession }) {
               {s.closedAt ? `${formatTime(s.closedAt)}` : "—"}
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Closed by {s.closedBy || "—"}{s.note ? ` · ${s.note}` : ""}
+              Closed by {s.closedBy || "—"}
             </p>
+            {s.note && (
+              <p className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-400 ring-1 ring-violet-500/20">
+                {s.note.includes("Transferred") ? "🏦" : "📝"} {s.note}
+              </p>
+            )}
           </div>
         </div>
         <div className="shrink-0 text-right">
@@ -415,6 +420,11 @@ function CloseDrawerDialog({
           }),
         });
       }
+      // Build note with transfer info if applicable
+      const transferNote = transferEnabled && transferN > 0
+        ? `Transferred ${formatBirr(transferN)} to ${transferTo}${transferDetail ? ` · ${transferDetail}` : ""}`
+        : "";
+      const fullNote = [note.trim(), transferNote].filter(Boolean).join(" | ") || undefined;
       // Close the drawer
       const r = await fetch("/api/meat/cash/sessions", {
         method: "POST",
@@ -422,7 +432,7 @@ function CloseDrawerDialog({
         body: JSON.stringify({
           action: "CLOSE",
           counted: countedN,
-          note: note.trim() || undefined,
+          note: fullNote,
           userName: userName.trim() || undefined,
         }),
       });

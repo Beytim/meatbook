@@ -182,8 +182,8 @@ export function HomeView() {
         </Card>
       )}
 
-      {/* Empty state or last sale */}
-      {today.salesCount === 0 ? (
+      {/* Empty state when no sales today */}
+      {today.salesCount === 0 && (
         <Card className="mb-4 flex flex-col items-center justify-center p-8 text-center card-raised">
           <div className="mb-3 grid h-16 w-16 place-items-center rounded-2xl bg-muted/60 text-muted-foreground">
             <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1.6" /><circle cx="18" cy="21" r="1.6" /><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6" /></svg>
@@ -191,14 +191,6 @@ export function HomeView() {
           <p className="text-sm font-semibold">No sales yet today</p>
           <p className="mt-1 max-w-xs text-xs text-muted-foreground">Your first sale of the day will appear here. Tap Sell to begin.</p>
           <button onClick={() => go("SELL")} className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground meat-glow tap-scale">Start Selling</button>
-        </Card>
-      ) : (
-        <Card className="mb-4 flex items-center justify-between p-4 card-raised">
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Last sale</p>
-            <p className="text-sm font-semibold">#{String(data.lastSaleNumber).padStart(6, "0")}</p>
-          </div>
-          <button onClick={() => go("SALES_HISTORY")} className="text-xs font-medium text-primary">View all →</button>
         </Card>
       )}
 

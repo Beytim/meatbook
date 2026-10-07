@@ -314,19 +314,19 @@ function ReceiptDialog({ id, onClose }: { id: string | null; onClose: () => void
   return (
     <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex flex-wrap items-center gap-2">
+            <span>Receipt</span>
+            {sale && <span className="tnum">#{sale.number}</span>}
+            {sale && <Pill tone={STATUS_TONE[sale.status]}>{STATUS_LABEL[sale.status]}</Pill>}
+          </DialogTitle>
+        </DialogHeader>
         {isLoading || !sale ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             Loading receipt…
           </div>
         ) : (
           <>
-            <DialogHeader>
-              <DialogTitle className="flex flex-wrap items-center gap-2">
-                <span>Receipt</span>
-                <span className="tnum">#{sale.number}</span>
-                <Pill tone={STATUS_TONE[sale.status]}>{STATUS_LABEL[sale.status]}</Pill>
-              </DialogTitle>
-            </DialogHeader>
 
             <div className="space-y-3">
               {/* Meta grid */}

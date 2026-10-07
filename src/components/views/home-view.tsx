@@ -115,8 +115,26 @@ export function HomeView() {
         </div>
       </Card>
 
-      {/* ─── Stock & Money Flow: did today's sales cover today's purchases? ─── */}
-      <StockFlowCard flow={data.flow} cur={cur} />
+      {/* ─── Purchase Recovery + Net Result (side by side on desktop, stacked on mobile) ─── */}
+      <div className="mb-3 mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <PurchaseRecoveryCard
+          sales={data.flow.todayRevenue}
+          purchaseCost={data.flow.purchaseAmount}
+          cur={cur}
+        />
+        <NetResultCard
+          sales={data.flow.todayRevenue}
+          purchaseCost={data.flow.purchaseAmount}
+          expenses={data.flow.todayExpenses}
+          cur={cur}
+        />
+      </div>
+
+      {/* ─── Sold Today + Bought Today (operational kg info, separate from recovery) ─── */}
+      <div className="mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <SoldTodayCard kgSold={data.flow.todayKgSold} kgBought={data.flow.purchaseKg} />
+        <BoughtTodayCard kgBought={data.flow.purchaseKg} kgSold={data.flow.todayKgSold} />
+      </div>
 
       {/* ─── Today's Purchases — animal-type breakdown ─── */}
       {data.todayPurchases.count > 0 && (
@@ -196,124 +214,153 @@ function QuickAction({ label, icon, onClick, tone }: { label: string; icon: Reac
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// Stock & Money Flow card — the owner's key business-health indicator.
-// Answers: "Did today's sales cover today's purchases?" with color-coded
-// profit meter: red (loss) → amber (break-even) → green (healthy).
+// 1. PURCHASE RECOVERY CARD
+// How much of today's meat purchase cost has been recovered by today's sales.
+// Formula: Sales ÷ Purchase Cost × 100. Based on MONEY, not kg.
+// Status: below 100% = RED, exactly 100% = BLUE, above 100% = GREEN.
 // ════════════════════════════════════════════════════════════════════════
-function StockFlowCard({ flow, cur }: { flow: DashboardData["flow"]; cur: string }) {
-  const { profit, profitStatus, purchaseAmount, todayRevenue, purchaseKg, todayKgSold, todayExpenses, purchaseCoverage, kgRatio } = flow;
+function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; purchaseCost: number; cur: string }) {
+  // No purchases today → nothing to recover. Show a neutral state.
+  if (purchaseCost <= 0) {
+    return (
+      <Card className="bg-white p-4 ring-1 ring-border/60">
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Purchase Recovery</p>
+        <p className="mt-2 text-3xl font-bold tnum text-muted-foreground">—</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">No purchases today</p>
+        {sales > 0 && (
+          <p className="mt-0.5 text-[11px] text-muted-foreground tnum">{formatBirr(sales, cur)} sales</p>
+        )}
+      </Card>
+    );
+  }
 
-  // color theme by profit status
-  const statusConfig = {
-    loss: {
-      ring: "ring-red-500/30",
-      bg: "from-red-500/10 to-card",
-      text: "text-red-400",
-      label: "Loss today",
-      bar: "bg-red-500",
-      pill: "bg-red-500/15 text-red-400 ring-red-500/25",
-    },
-    break_even: {
-      ring: "ring-amber-500/30",
-      bg: "from-amber-500/10 to-card",
-      text: "text-amber-400",
-      label: "Break-even",
-      bar: "bg-amber-500",
-      pill: "bg-amber-500/15 text-amber-400 ring-amber-500/25",
-    },
-    healthy: {
-      ring: "ring-emerald-500/30",
-      bg: "from-emerald-500/10 to-card",
-      text: "text-emerald-400",
-      label: "Healthy profit",
-      bar: "bg-emerald-500",
-      pill: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/25",
-    },
-  }[profitStatus];
+  const recovery = sales / purchaseCost; // 1.0 = 100%
+  const pct = recovery * 100;
+  const diff = sales - purchaseCost;
+  const isBreakEven = Math.abs(diff) < 0.005; // exactly 100%
+  const isAbove = diff > 0;
 
-  // Coverage bar: how much of purchases were covered by sales (0% → 100%+)
-  const coveragePct = Math.max(0, Math.min(100, purchaseCoverage * 100));
-
-  // KG flow bar: sold vs purchased
-  const kgMax = Math.max(purchaseKg, todayKgSold, 0.01);
-  const soldPct = (todayKgSold / kgMax) * 100;
-  const boughtPct = (purchaseKg / kgMax) * 100;
+  // status color (hex from spec → tailwind inline)
+  // below 100% = RED #C53030, exactly 100% = BLUE #2563EB, above 100% = GREEN #16803C
+  const color = isBreakEven ? "#2563EB" : isAbove ? "#16803C" : "#C53030";
 
   return (
-    <Card className={`mb-4 overflow-hidden bg-gradient-to-br ${statusConfig.bg} p-4 ring-1 ${statusConfig.ring} card-raised`}>
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">Stock &amp; Money Flow</h2>
-          <p className="text-[11px] text-muted-foreground">Did today&apos;s sales cover today&apos;s purchases?</p>
-        </div>
-        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${statusConfig.pill}`}>
-          {statusConfig.label}
-        </span>
-      </div>
+    <Card className="bg-white p-4 ring-1 ring-border/60">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Purchase Recovery</p>
 
-      {/* Profit hero number */}
-      <div className="mb-3 flex items-end justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Realized profit today</p>
-          <p className={`text-2xl font-bold tnum ${statusConfig.text}`}>{formatBirr(profit, cur)}</p>
-        </div>
-        <div className="text-right text-[11px] text-muted-foreground">
-          <p>{formatBirr(todayRevenue, cur)} sales</p>
-          <p>− {formatBirr(purchaseAmount, cur)} purchases</p>
-          <p>− {formatBirr(todayExpenses, cur)} expenses</p>
-        </div>
-      </div>
+      {/* Main percentage in status color */}
+      <p className="mt-2 text-4xl font-bold tnum leading-none" style={{ color }}>
+        {pct.toFixed(1)}%
+      </p>
 
-      {/* Coverage bar: sales vs purchases */}
-      {purchaseAmount > 0 && (
-        <div className="mb-3">
-          <div className="mb-1 flex items-center justify-between text-[11px]">
-            <span className="text-muted-foreground">Sales covering purchases</span>
-            <span className={`font-bold tnum ${purchaseCoverage >= 1 ? "text-emerald-400" : "text-amber-400"}`}>
-              {purchaseCoverage.toFixed(0)}%
-            </span>
-          </div>
-          <div className="relative h-2 overflow-hidden rounded-full bg-muted/60">
-            <div
-              className={`h-full rounded-full ${purchaseCoverage >= 1 ? "bg-emerald-500" : "bg-amber-500"}`}
-              style={{ width: `${coveragePct}%` }}
-            />
-            {/* break-even marker at 100% */}
-            <div className="absolute right-0 top-0 h-full w-0.5 bg-foreground/40" />
-          </div>
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            {purchaseCoverage >= 1
-              ? `Surplus: ${formatBirr(todayRevenue - purchaseAmount, cur)} beyond animal cost`
-              : `Short by ${formatBirr(purchaseAmount - todayRevenue, cur)} to cover animals`}
-          </p>
-        </div>
-      )}
+      {/* Sales line */}
+      <p className="mt-3 text-[12px] tnum text-foreground/80">
+        {formatBirr(sales, cur)} sales
+      </p>
 
-      {/* KG flow: sold vs bought */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl bg-background/50 p-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Sold today</p>
-          <p className="mt-0.5 text-base font-bold tnum">{formatKg(todayKgSold)}</p>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted/50">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${soldPct}%` }} />
-          </div>
-        </div>
-        <div className="rounded-xl bg-background/50 p-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">Bought today</p>
-          <p className="mt-0.5 text-base font-bold tnum">{formatKg(purchaseKg)}</p>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted/50">
-            <div className="h-full rounded-full bg-amber-500" style={{ width: `${boughtPct}%` }} />
-          </div>
-        </div>
-      </div>
-
-      {purchaseKg > 0 && (
-        <p className="mt-2 text-[10px] text-muted-foreground">
-          KG ratio: <span className={`font-semibold tnum ${kgRatio >= 1 ? "text-emerald-400" : kgRatio > 0 ? "text-amber-400" : "text-red-400"}`}>{(kgRatio * 100).toFixed(0)}%</span>
-          {" "}of bought weight sold today
-          {kgRatio < 1 && purchaseKg > 0 ? ` · ${formatKg(purchaseKg - todayKgSold)} in stock` : ""}
+      {/* Difference / break-even line in status color */}
+      {isBreakEven ? (
+        <p className="mt-0.5 text-[12px] font-semibold" style={{ color }}>
+          Purchase cost recovered
+        </p>
+      ) : isAbove ? (
+        <p className="mt-0.5 text-[12px] font-semibold tnum" style={{ color }}>
+          {formatBirr(diff, cur)} above purchase cost
+        </p>
+      ) : (
+        <p className="mt-0.5 text-[12px] font-semibold tnum" style={{ color }}>
+          {formatBirr(Math.abs(diff), cur)} below purchase cost
         </p>
       )}
+
+      {/* Recovery bar (0–200% scale, break-even marker at 50% = 100%) */}
+      <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-stone-200">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${Math.min(100, (pct / 200) * 100)}%`, backgroundColor: color }}
+        />
+        {/* 100% break-even marker at midpoint */}
+        <div className="absolute left-1/2 top-0 h-full w-px bg-foreground/30" />
+      </div>
+    </Card>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// 2. NET RESULT CARD
+// Net Result = Sales − Purchase Cost − Actual Expenses
+// Status: positive = GREEN, negative = RED, exactly zero = BLUE.
+// ════════════════════════════════════════════════════════════════════════
+function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; purchaseCost: number; expenses: number; cur: string }) {
+  const net = Math.round((sales - purchaseCost - expenses) * 100) / 100;
+  const isZero = Math.abs(net) < 0.005;
+  const isPositive = net > 0;
+
+  // positive = GREEN #16803C, negative = RED #C53030, zero = BLUE #2563EB
+  const color = isZero ? "#2563EB" : isPositive ? "#16803C" : "#C53030";
+  const label = isZero ? "Break Even" : isPositive ? "Money Made" : "Money Lost";
+
+  return (
+    <Card className="bg-white p-4 ring-1 ring-border/60">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Net Result</p>
+
+      {/* Net result amount in status color */}
+      <p className="mt-2 text-3xl font-bold tnum leading-none" style={{ color }}>
+        {net < 0 ? "−" : ""}{formatBirr(Math.abs(net), cur)}
+      </p>
+
+      {/* Status label in status color */}
+      <p className="mt-2 text-[12px] font-bold uppercase tracking-wider" style={{ color }}>
+        {label}
+      </p>
+
+      {/* Breakdown */}
+      {isZero ? (
+        <p className="mt-2 text-[11px] text-muted-foreground">No money made or lost</p>
+      ) : (
+        <div className="mt-2 space-y-0.5 text-[11px] tnum text-foreground/70">
+          <p>{formatBirr(sales, cur)} sales</p>
+          <p>− {formatBirr(purchaseCost, cur)} purchase</p>
+          <p>− {formatBirr(expenses, cur)} expenses</p>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// 3. SOLD TODAY card — operational kg info (separate from recovery)
+// Shows total kg sold + % of today's bought kg that has been sold.
+// ════════════════════════════════════════════════════════════════════════
+function SoldTodayCard({ kgSold, kgBought }: { kgSold: number; kgBought: number }) {
+  const pctSold = kgBought > 0 ? Math.round((kgSold / kgBought) * 100) : null;
+  return (
+    <Card className="bg-white p-4 ring-1 ring-border/60">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Sold Today</p>
+      <p className="mt-2 text-2xl font-bold tnum leading-none">{formatKg(kgSold)}</p>
+      <p className="mt-2 text-[11px] text-muted-foreground tnum">
+        {pctSold !== null ? `${pctSold}% sold` : "—"}
+      </p>
+    </Card>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// 4. BOUGHT TODAY card — operational kg info
+// Shows total kg bought today + remaining kg (bought − sold).
+// Remaining is reliable here because both numbers come from stored transactions
+// for TODAY (purchases today, sales today). It is a same-day flow figure,
+// not a persistent inventory balance.
+// ════════════════════════════════════════════════════════════════════════
+function BoughtTodayCard({ kgBought, kgSold }: { kgBought: number; kgSold: number }) {
+  const remaining = Math.max(0, Math.round((kgBought - kgSold) * 100) / 100);
+  return (
+    <Card className="bg-white p-4 ring-1 ring-border/60">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Bought Today</p>
+      <p className="mt-2 text-2xl font-bold tnum leading-none">{formatKg(kgBought)}</p>
+      <p className="mt-2 text-[11px] text-muted-foreground tnum">
+        {kgBought > 0 ? `${formatKg(remaining)} left` : "—"}
+      </p>
     </Card>
   );
 }

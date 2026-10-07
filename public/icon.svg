@@ -1,0 +1,27 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1c1815"/>
+      <stop offset="1" stop-color="#0e0c0a"/>
+    </linearGradient>
+    <linearGradient id="meat" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e0533a"/>
+      <stop offset="1" stop-color="#a8281b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- book spine -->
+  <rect x="118" y="120" width="276" height="272" rx="26" fill="#26201c" stroke="#3a302a" stroke-width="3"/>
+  <line x1="256" y1="138" x2="256" y2="374" stroke="#3a302a" stroke-width="3"/>
+  <!-- meat / cleaver mark -->
+  <g transform="translate(256 250)">
+    <path d="M-58 -28 C-58 -60 -28 -78 0 -78 C40 -78 66 -52 66 -18 C66 6 52 22 38 30 C30 50 8 64 -16 64 C-46 64 -66 42 -66 14 C-66 -2 -62 -16 -58 -28 Z" fill="url(#meat)"/>
+    <path d="M-40 -36 C-30 -50 -10 -58 8 -56" stroke="#ffb3a3" stroke-width="6" stroke-linecap="round" opacity="0.6"/>
+    <circle cx="22" cy="6" r="9" fill="#fff" opacity="0.85"/>
+    <circle cx="22" cy="6" r="4" fill="#a8281b"/>
+    <!-- bone -->
+    <path d="M40 44 C54 50 70 44 70 58 C70 70 56 72 50 64 C44 72 30 70 30 60 Z" fill="#f3ece3"/>
+  </g>
+  <!-- M monogram small -->
+  <text x="256" y="470" font-family="Georgia, serif" font-size="56" font-weight="700" fill="#e0533a" text-anchor="middle" letter-spacing="2">MeatBook</text>
+</svg>

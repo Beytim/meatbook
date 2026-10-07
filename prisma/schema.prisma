@@ -1,0 +1,226 @@
+// MeatBook — Digital Butcher's Book
+// Offline-first SQLite data model for a meat house POS + accounting system.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Products (meat types) ────────────────────────────────────────────
+// Each product has two price tiers: Take Home (OUT) and Eat Here (IN).
+model Product {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  emoji        String   @default("🥩")
+  // Take Home / OUT price per kg
+  priceTakeHome Float   @default(0)
+  // Eat Here / IN price per kg
+  priceEatHere  Float   @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  saleItems   SaleItem[]
+  wastages    Wastage[]
+  purchases   PurchaseItem[]
+}
+
+// ─── Sales ─────────────────────────────────────────────────────────────
+// A sale is a completed transaction. type: TAKE_HOME | EAT_HERE
+model Sale {
+  id           String   @id @default(cuid())
+  number       Int      @unique // human-friendly sequential receipt #
+  type         String   @default("TAKE_HOME") // TAKE_HOME | EAT_HERE
+  // payment
+  paymentMethod String  @default("CASH") // CASH | MOBILE | BANK
+  paymentDetail String? // e.g. "Telebirr", "CBE"
+  total        Float    @default(0)
+  totalKg      Float    @default(0)
+  status       String   @default("COMPLETED") // COMPLETED | VOIDED | REFUNDED
+  cashierId    String?
+  cashierName  String?
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items        SaleItem[]
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([type])
+}
+
+model SaleItem {
+  id         String  @id @default(cuid())
+  saleId     String
+  sale       Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  name       String  // snapshot of product name
+  unitPrice  Float   // price per kg used
+  kg         Float
+  total      Float
+  createdAt  DateTime @default(now())
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// ─── Purchases (money out for meat & supplies) ────────────────────────
+model Purchase {
+  id          String   @id @default(cuid())
+  supplier    String?
+  note        String?
+  total       Float    @default(0)
+  paymentMethod String @default("CASH")
+  userId      String?
+  userName    String?
+  createdAt   DateTime @default(now())
+
+  items       PurchaseItem[]
+
+  @@index([createdAt])
+}
+
+model PurchaseItem {
+  id          String  @id @default(cuid())
+  purchaseId  String
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  name        String
+  kg          Float    @default(0)
+  unitCost    Float    @default(0)
+  total       Float    @default(0)
+}
+
+// ─── Wastage (no inventory deduction) ─────────────────────────────────
+model Wastage {
+  id         String   @id @default(cuid())
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id])
+  name       String
+  kg         Float    @default(0)
+  reason     String?
+  note       String?
+  userId     String?
+  userName   String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ─── Expenses (shop operations) ───────────────────────────────────────
+model Expense {
+  id          String   @id @default(cuid())
+  category    String
+  amount      Float    @default(0)
+  note        String?
+  paymentMethod String @default("CASH")
+  userId      String?
+  userName    String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([category])
+}
+
+// ─── Cash sessions (open/close drawer) ────────────────────────────────
+model CashSession {
+  id          String    @id @default(cuid())
+  opening     Float     @default(0)
+  expected    Float     @default(0) // computed on close
+  counted     Float?    // entered on close
+  difference  Float?    // counted - expected
+  status      String    @default("OPEN") // OPEN | CLOSED
+  openedBy    String?
+  closedBy    String?
+  openedAt    DateTime  @default(now())
+  closedAt    DateTime?
+  note        String?
+
+  @@index([status])
+}
+
+// ─── Money movements (manual cash in/out) ─────────────────────────────
+model MoneyMove {
+  id          String   @id @default(cuid())
+  direction   String   // IN | OUT
+  account     String   @default("CASH") // CASH | MOBILE | BANK
+  amount      Float    @default(0)
+  reason      String?
+  note        String?
+  userId      String?
+  userName    String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([account])
+}
+
+// ─── Staff ────────────────────────────────────────────────────────────
+model Staff {
+  id        String   @id @default(cuid())
+  name      String
+  role      String   @default("CASHIER") // OWNER | MANAGER | CASHIER
+  pin       String?
+  active    Boolean  @default(true)
+  joinedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Audit log ────────────────────────────────────────────────────────
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  description String?
+  userId      String?
+  userName    String?
+  meta        String?  // JSON string
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}
+
+// ─── Backups ──────────────────────────────────────────────────────────
+model Backup {
+  id        String   @id @default(cuid())
+  size      Int      @default(0) // bytes
+  path      String?
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+// ─── App settings / shop identity / license (single row) ──────────────
+model Setting {
+  id            String   @id @default("singleton")
+  shopName      String   @default("Kera Fresh Meat Shop")
+  shopPhone     String   @default("+251 911 000 000")
+  shopAddress   String   @default("Kera, Addis Ababa, Ethiopia")
+  receiptHeader String   @default("Kera Fresh Meat Shop")
+  receiptFooter String   @default("Thank you! Meat sold by kg. Keep refrigerated.")
+  currency      String   @default("Br")
+  // license
+  licenseId     String   @default("MB-DEMO-0001")
+  shopId        String   @default("shop")
+  plan          String   @default("Standard")
+  licenseStart  DateTime @default(now())
+  licenseExpiry DateTime @default("2026-12-05T03:00:00Z")
+  // security
+  lockEnabled   Boolean  @default(false)
+  lockPin       String?
+  autoBackup    Boolean  @default(false)
+  updatedAt     DateTime @updatedAt
+}
+
+// Counter for human-friendly receipt numbers
+model Counter {
+  id    String @id @default("singleton")
+  saleNumber Int @default(1)
+}

@@ -1,0 +1,15 @@
+{
+  "name": "MeatBook — Digital Butcher's Book",
+  "short_name": "MeatBook",
+  "description": "Offline-first digital butcher's book for meat houses. Sell, track cash, products, wastage, expenses and reports — all on device.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14110f",
+  "theme_color": "#14110f",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

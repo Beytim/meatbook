@@ -267,12 +267,26 @@ function DebtDetailDialog({ debt, open, onOpenChange }: { debt: Debt; open: bool
             <div>
               <p className="mb-1.5 text-xs font-semibold">Payment History</p>
               <div className="space-y-1">
-                {debt.payments.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between rounded-lg bg-muted/20 px-2.5 py-1.5 text-xs">
-                    <span className="text-muted-foreground">{formatDate(p.createdAt)}</span>
-                    <span className="font-semibold tnum text-emerald-400">+{formatBirr(p.amount)}</span>
-                  </div>
-                ))}
+                {debt.payments.map((p) => {
+                  const methodLabel = p.paymentMethod === "CASH" ? "Cash"
+                    : p.paymentMethod === "MOBILE" ? `Mobile${p.paymentDetail ? ` · ${p.paymentDetail}` : ""}`
+                    : p.paymentMethod === "BANK" ? `Bank${p.paymentDetail ? ` · ${p.paymentDetail}` : ""}`
+                    : p.paymentMethod;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between rounded-lg bg-muted/20 px-2.5 py-2 text-xs">
+                      <div className="min-w-0">
+                        <p className="text-muted-foreground">{formatDate(p.createdAt)}</p>
+                        <p className="mt-0.5 flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                            {p.paymentMethod === "CASH" ? "💵" : p.paymentMethod === "MOBILE" ? "📱" : "🏦"} {methodLabel}
+                          </span>
+                          {p.note && <span className="truncate text-[10px] text-muted-foreground">{p.note}</span>}
+                        </p>
+                      </div>
+                      <span className="shrink-0 font-semibold tnum text-emerald-400">+{formatBirr(p.amount)}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

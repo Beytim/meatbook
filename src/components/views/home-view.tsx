@@ -137,9 +137,9 @@ export function HomeView() {
         <TodayPurchasesCard purchases={data.todayPurchases} cur={cur} onOpen={() => go("PURCHASES")} />
       )}
 
-      {/* ─── Cash · Mobile · Bank ─── */}
+      {/* ─── Payment Methods ─── */}
       <div className="mb-2 mt-4 flex items-center justify-between px-1">
-        <h2 className="text-sm font-semibold tracking-tight">Cash · Mobile · Bank</h2>
+        <h2 className="text-sm font-semibold tracking-tight">Payment Methods</h2>
         <button onClick={() => go("MONEY")} className="shrink-0 text-xs font-medium text-primary">Money →</button>
       </div>
       <div className="mb-4 space-y-2">

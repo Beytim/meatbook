@@ -12,6 +12,10 @@ import { HomeView } from "@/components/views/home-view";
 import { SellView } from "@/components/views/sell-view";
 import { ProductsView } from "@/components/views/products-view";
 import { MoneyView } from "@/components/views/money-view";
+// Purchases + Wastage are also static — lazy-loading them caused OOM spikes
+// when Turbopack compiled their chunks on-demand under the 4GB cgroup limit.
+import { PurchasesView } from "@/components/views/purchases-view";
+import { WastageView } from "@/components/views/wastage-view";
 
 // Secondary ("More") views are lazy-loaded to keep memory low under the cgroup limit.
 const loading = () => (
@@ -28,8 +32,8 @@ const VIEW_MAP: Record<ViewId, React.ComponentType> = {
   MONEY: MoneyView,
   SALES_HISTORY: dynamic(() => import("@/components/views/sales-history-view").then((m) => m.SalesHistoryView), { loading }),
   PRODUCT_SALES: dynamic(() => import("@/components/views/product-sales-view").then((m) => m.ProductSalesView), { loading }),
-  PURCHASES: dynamic(() => import("@/components/views/purchases-view").then((m) => m.PurchasesView), { loading }),
-  WASTAGE: dynamic(() => import("@/components/views/wastage-view").then((m) => m.WastageView), { loading }),
+  PURCHASES: PurchasesView,
+  WASTAGE: WastageView,
   EXPENSES: dynamic(() => import("@/components/views/expenses-view").then((m) => m.ExpensesView), { loading }),
   CASH_CONTROL: dynamic(() => import("@/components/views/cash-control-view").then((m) => m.CashControlView), { loading }),
   RECEIPTS: dynamic(() => import("@/components/views/receipts-view").then((m) => m.ReceiptsView), { loading }),

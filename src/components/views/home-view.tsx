@@ -79,56 +79,30 @@ export function HomeView() {
         } />
       </div>
 
-      {/* Today's sales — compact */}
-      <Card className="mb-3 overflow-hidden card-raised">
-        <div className="flex items-center justify-between bg-gradient-to-br from-primary/12 via-card to-card p-3">
+      {/* Today's sales — ultra compact single card */}
+      <Card className="mb-2 overflow-hidden card-raised bg-card">
+        <div className="flex items-center justify-between bg-gradient-to-br from-primary/12 via-card to-card p-2.5">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Today&apos;s Sales</p>
-            <p className="mt-0.5 text-2xl font-bold tnum tracking-tight">{formatBirr(today.revenue, cur)}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {today.salesCount} {today.salesCount === 1 ? "sale" : "sales"} · {formatKg(today.kgSold)}
-            </p>
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Today&apos;s Sales</p>
+            <p className="text-xl font-bold tnum tracking-tight leading-tight">{formatBirr(today.revenue, cur)}</p>
           </div>
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/20 text-primary ring-1 ring-primary/30">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v4h-4" /></svg>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 divide-x divide-border/60">
-          <div className="p-2.5">
-            <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Take Home</p>
+          <div className="text-right">
+            <p className="text-[9px] text-muted-foreground tnum">{today.salesCount} sales · {formatKg(today.kgSold)}</p>
+            <div className="mt-0.5 flex items-center justify-end gap-2 text-[10px] tnum">
+              <span className="text-amber-400">● {formatBirr(today.takeHome.revenue, cur)}</span>
+              <span className="text-emerald-400">● {formatBirr(today.eatHere.revenue, cur)}</span>
             </div>
-            <p className="mt-0.5 text-sm font-bold tnum">{formatBirr(today.takeHome.revenue, cur)}</p>
-            <p className="text-[10px] text-muted-foreground">{today.takeHome.count} · {formatKg(today.takeHome.kg)}</p>
-          </div>
-          <div className="p-2.5">
-            <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Eat Here</p>
-            </div>
-            <p className="mt-0.5 text-sm font-bold tnum">{formatBirr(today.eatHere.revenue, cur)}</p>
-            <p className="text-[10px] text-muted-foreground">{today.eatHere.count} · {formatKg(today.eatHere.kg)}</p>
           </div>
         </div>
       </Card>
 
-      {/* ─── Purchase Recovery + Net Result (compact, side by side) ─── */}
-      <div className="mb-2 mt-3 grid grid-cols-2 gap-2">
-        <PurchaseRecoveryCard
-          sales={data.flow.todayRevenue}
-          purchaseCost={data.flow.purchaseAmount}
-          cur={cur}
-        />
-        <NetResultCard
-          sales={data.flow.todayRevenue}
-          purchaseCost={data.flow.purchaseAmount}
-          expenses={data.flow.todayExpenses}
-          cur={cur}
-        />
+      {/* Purchase Recovery + Net Result — compact side by side */}
+      <div className="mb-2 grid grid-cols-2 gap-2">
+        <PurchaseRecoveryCard sales={data.flow.todayRevenue} purchaseCost={data.flow.purchaseAmount} cur={cur} />
+        <NetResultCard sales={data.flow.todayRevenue} purchaseCost={data.flow.purchaseAmount} expenses={data.flow.todayExpenses} cur={cur} />
       </div>
 
-      {/* ─── Sold Today + Bought Today (compact, side by side) ─── */}
+      {/* Sold Today + Bought Today — compact side by side */}
       <div className="mb-3 grid grid-cols-2 gap-2">
         <SoldTodayCard kgSold={data.flow.todayKgSold} kgBought={data.flow.purchaseKg} />
         <BoughtTodayCard kgBought={data.flow.purchaseKg} kgSold={data.flow.todayKgSold} />

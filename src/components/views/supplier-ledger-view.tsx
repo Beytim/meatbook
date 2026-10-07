@@ -155,17 +155,32 @@ function SupplierDetailDialog({ supplier, open, onOpenChange }: { supplier: Supp
             </div>
           </div>
           <div className="max-h-[40vh] space-y-1.5 overflow-y-auto mb-scroll">
-            {data?.entries?.map((e: { id: string; kind: string; amount: number; signedAmount: number; note: string | null; paymentMethod: string | null; paymentDetail: string | null; createdAt: string }) => (
-              <div key={e.id} className="flex items-center justify-between rounded-lg bg-muted/20 px-2.5 py-2 text-xs">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{e.note || (e.kind === "DEBIT" ? "Credit purchase" : "Payment")}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatDate(e.createdAt)}</p>
+            {data?.entries?.map((e: { id: string; kind: string; amount: number; signedAmount: number; note: string | null; paymentMethod: string | null; paymentDetail: string | null; createdAt: string }) => {
+              const methodLabel = e.kind === "CREDIT" && e.paymentMethod
+                ? e.paymentMethod === "CASH" ? "Cash"
+                  : e.paymentMethod === "MOBILE" ? `Mobile${e.paymentDetail ? ` · ${e.paymentDetail}` : ""}`
+                  : e.paymentMethod === "BANK" ? `Bank${e.paymentDetail ? ` · ${e.paymentDetail}` : ""}`
+                  : e.paymentMethod
+                : null;
+              return (
+                <div key={e.id} className="flex items-center justify-between rounded-lg bg-muted/20 px-2.5 py-2 text-xs">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{e.note || (e.kind === "DEBIT" ? "Credit purchase" : "Payment")}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatDate(e.createdAt)}</p>
+                    {methodLabel && (
+                      <p className="mt-0.5 flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                          {e.paymentMethod === "CASH" ? "💵" : e.paymentMethod === "MOBILE" ? "📱" : "🏦"} {methodLabel}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                  <span className={cn("shrink-0 font-bold tnum", e.kind === "DEBIT" ? "text-red-400" : "text-emerald-400")}>
+                    {e.kind === "DEBIT" ? "+" : "−"}{formatBirr(e.amount)}
+                  </span>
                 </div>
-                <span className={cn("shrink-0 font-bold tnum", e.kind === "DEBIT" ? "text-red-400" : "text-emerald-400")}>
-                  {e.kind === "DEBIT" ? "+" : "−"}{formatBirr(e.amount)}
-                </span>
-              </div>
-            )) ?? <p className="py-4 text-center text-xs text-muted-foreground">Loading…</p>}
+              );
+            }) ?? <p className="py-4 text-center text-xs text-muted-foreground">Loading…</p>}
           </div>
         </div>
         <DialogFooter>

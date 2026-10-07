@@ -4,9 +4,9 @@ import { audit } from "@/lib/api-helpers";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status"); // OPEN | SETTLED | null
+  const status = searchParams.get("status"); // OPEN | SETTLED | ALL | null
   const where: Record<string, unknown> = {};
-  if (status) where.status = status;
+  if (status && status !== "ALL") where.status = status;
 
   const debts = await db.debt.findMany({
     where: where as never,

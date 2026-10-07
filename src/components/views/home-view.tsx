@@ -19,7 +19,7 @@ interface DashboardData {
     eatHere: { revenue: number; count: number; kg: number };
   };
   lastSaleNumber: number | null;
-  openSession: { id: string; opening: number; openedAt: string; openedBy: string | null } | null;
+  openSession: { id: string; opening: number; openedAt: string; openedBy: string | null; expectedCash?: number } | null;
   accounts: { cash: number; mobile: number; bank: number };
   tree: { CASH: AccountTree; MOBILE: AccountTree; BANK: AccountTree };
   flow: {
@@ -168,10 +168,13 @@ export function HomeView() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold">Open Money / Cash Flow</p>
-                  <Pill tone="good"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> drawer open</Pill>
+                  <p className="text-sm font-semibold">Cash Drawer</p>
+                  <Pill tone="good"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> OPEN</Pill>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Opening {formatBirr(data.openSession.opening, cur)} · since {formatTime(data.openSession.openedAt)}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Expected <span className="font-semibold tnum text-foreground">{formatBirr(data.openSession.expectedCash ?? data.openSession.opening, cur)}</span>
+                  {" · "}opened {formatBirr(data.openSession.opening, cur)} · {formatTime(data.openSession.openedAt)}
+                </p>
               </div>
             </div>
             <button onClick={() => go("CASH_CONTROL")} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground tap-scale">Close</button>

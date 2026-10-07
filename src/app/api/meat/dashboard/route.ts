@@ -100,6 +100,26 @@ export async function GET() {
   // Coverage: did sales cover purchases? 0 = none, 1 = break-even, >1 = surplus
   const purchaseCoverage = purchaseAmount > 0 ? todayRevenue / purchaseAmount : (todayRevenue > 0 ? 1 : 0);
 
+  // Compute expected cash for the open drawer session (reconciled with cash control)
+  let expectedCash = openSession?.opening ?? 0;
+  if (openSession) {
+    const sessionStart = openSession.openedAt;
+    const [cashSales, cashExpenses, cashPurchases, cashMovesIn, cashMovesOut] = await Promise.all([
+      db.sale.aggregate({ where: { status: "COMPLETED", paymentMethod: "CASH", createdAt: { gte: sessionStart } }, _sum: { total: true } }),
+      db.expense.aggregate({ where: { paymentMethod: "CASH", createdAt: { gte: sessionStart } }, _sum: { amount: true } }),
+      db.purchase.aggregate({ where: { paymentMethod: "CASH", createdAt: { gte: sessionStart } }, _sum: { total: true } }),
+      db.moneyMove.aggregate({ where: { account: "CASH", direction: "IN", createdAt: { gte: sessionStart } }, _sum: { amount: true } }),
+      db.moneyMove.aggregate({ where: { account: "CASH", direction: "OUT", createdAt: { gte: sessionStart } }, _sum: { amount: true } }),
+    ]);
+    expectedCash = (openSession.opening)
+      + Number(cashSales._sum.total ?? 0)
+      - Number(cashExpenses._sum.amount ?? 0)
+      - Number(cashPurchases._sum.total ?? 0)
+      + Number(cashMovesIn._sum.amount ?? 0)
+      - Math.abs(Number(cashMovesOut._sum.amount ?? 0));
+    expectedCash = Math.round(expectedCash * 100) / 100;
+  }
+
   return NextResponse.json({
     settings: { shopName: settings.shopName, currency: settings.currency },
     today: {
@@ -119,7 +139,7 @@ export async function GET() {
     },
     lastSaleNumber: lastSale?.number ?? null,
     openSession: openSession
-      ? { id: openSession.id, opening: openSession.opening, openedAt: openSession.openedAt, openedBy: openSession.openedBy }
+      ? { id: openSession.id, opening: openSession.opening, openedAt: openSession.openedAt, openedBy: openSession.openedBy, expectedCash }
       : null,
     // Today's sales broken down by media — ALWAYS equals Today's Sales total.
     accounts: {

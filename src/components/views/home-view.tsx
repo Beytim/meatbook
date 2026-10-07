@@ -96,11 +96,11 @@ export function HomeView() {
         </div>
       </Card>
 
-      {/* Money — sales by media (tree breakdown by sub-account) */}
+      {/* Today's sales by media — same source as Today's Sales card above */}
       <div className="mb-2 flex items-center justify-between px-1">
         <div>
-          <h2 className="text-base font-semibold tracking-tight">Money from sales — by media</h2>
-          <p className="text-[11px] text-muted-foreground">Total received through each channel. Balances &amp; money-out are in Money.</p>
+          <h2 className="text-base font-semibold tracking-tight">Today&apos;s sales — by media</h2>
+          <p className="text-[11px] text-muted-foreground">Where today&apos;s revenue came from. All-time balances are in Money.</p>
         </div>
         <button onClick={() => go("MONEY")} className="shrink-0 text-xs font-medium text-primary">Open Money →</button>
       </div>

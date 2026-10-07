@@ -121,9 +121,12 @@ export function SellView() {
       setLastSale({ number: data.sale.number, total });
       setCart([]);
       setPaymentDetail("");
+      // Invalidate EVERY module that reads sales so the whole app stays in sync.
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["money"] });
+      qc.invalidateQueries({ queryKey: ["reports"] });
+      qc.invalidateQueries({ queryKey: ["audit"] });
       toast.success(`Sale #${data.sale.number} complete`);
     },
     onError: () => toast.error("Could not complete sale"),

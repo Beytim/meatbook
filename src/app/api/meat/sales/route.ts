@@ -69,12 +69,13 @@ export async function POST(req: Request) {
   const totalKg = items.reduce((s, i) => s + Number(i.kg), 0);
   const number = await nextSaleNumber();
 
+  const method = String(paymentMethod || "CASH").toUpperCase();
   const sale = await db.sale.create({
     data: {
       number,
       type: type === "EAT_HERE" ? "EAT_HERE" : "TAKE_HOME",
-      paymentMethod: String(paymentMethod || "CASH").toUpperCase(),
-      paymentDetail: paymentDetail || null,
+      paymentMethod: method,
+      paymentDetail: method === "CASH" ? null : (paymentDetail || null),
       total: Math.round(total * 100) / 100,
       totalKg: Math.round(totalKg * 100) / 100,
       status: "COMPLETED",

@@ -29,7 +29,7 @@ interface ReportsData {
   salesCount: number;
   kgSold: number;
   split: { takeHome: Split; eatHere: Split };
-  paymentMethods: { method: string; revenue: number; share: number }[];
+  paymentMethods: { method: string; revenue: number; share: number; subAccounts: { detail: string | null; revenue: number }[] }[];
   products: { name: string; revenue: number; kg: number; count: number }[];
   expenses: number;
   purchases: number;
@@ -235,6 +235,7 @@ function SalesReport({ data }: { data: ReportsData }) {
                 method={m.method}
                 revenue={m.revenue}
                 share={m.share}
+                subAccounts={m.subAccounts}
               />
             ))}
           </div>
@@ -274,16 +275,19 @@ function PaymentMethodRow({
   method,
   revenue,
   share,
+  subAccounts,
 }: {
   method: string;
   revenue: number;
   share: number;
+  subAccounts?: { detail: string | null; revenue: number }[];
 }) {
   const m = (method || "").toUpperCase();
   const label = m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile Money" : m === "BANK" ? "Bank" : method;
   const tone = m === "CASH" ? "emerald" : m === "MOBILE" ? "sky" : "violet";
   const accent = { emerald: "bg-emerald-400", sky: "bg-sky-400", violet: "bg-violet-400" }[tone];
   const pct = Math.max(0, Math.min(100, share * 100));
+  const hasSubs = !!subAccounts && subAccounts.length > 0 && m !== "CASH";
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
@@ -302,6 +306,19 @@ function PaymentMethodRow({
           style={{ width: `${pct}%` }}
         />
       </div>
+      {hasSubs && (
+        <div className="mt-2 space-y-1 pl-4">
+          {subAccounts!.map((s, i) => (
+            <div key={(s.detail ?? "") + i} className="flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="h-1 w-1 rounded-full bg-muted-foreground/50" />
+                {s.detail ? s.detail : "Unspecified"}
+              </span>
+              <span className="font-semibold tnum">{formatBirr(s.revenue)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

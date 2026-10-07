@@ -33,18 +33,20 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { supplier, note, paymentMethod, items, userName } = body as {
-    supplier?: string; note?: string; paymentMethod?: string;
+  const { supplier, note, paymentMethod, paymentDetail, items, userName } = body as {
+    supplier?: string; note?: string; paymentMethod?: string; paymentDetail?: string;
     items: { productId?: string; name: string; kg: number; unitCost: number; total: number }[];
     userName?: string;
   };
   if (!items || items.length === 0) return NextResponse.json({ error: "items required" }, { status: 400 });
   const total = items.reduce((s, i) => s + Number(i.total), 0);
+  const method = (paymentMethod || "CASH").toUpperCase();
   const purchase = await db.purchase.create({
     data: {
       supplier: supplier || null,
       note: note || null,
-      paymentMethod: (paymentMethod || "CASH").toUpperCase(),
+      paymentMethod: method,
+      paymentDetail: method === "CASH" ? null : (paymentDetail || null),
       total: Math.round(total * 100) / 100,
       userName: userName || "Abebe Owner",
       items: {

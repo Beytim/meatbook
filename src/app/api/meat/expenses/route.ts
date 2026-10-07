@@ -25,10 +25,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { category, amount, note, paymentMethod, userName } = body;
+  const { category, amount, note, paymentMethod, paymentDetail, userName } = body;
   if (!category || !amount) return NextResponse.json({ error: "category and amount required" }, { status: 400 });
+  const method = (paymentMethod || "CASH").toUpperCase();
   const expense = await db.expense.create({
-    data: { category: String(category), amount: Number(amount), note: note || null, paymentMethod: (paymentMethod || "CASH").toUpperCase(), userName: userName || "Abebe Owner" },
+    data: { category: String(category), amount: Number(amount), note: note || null, paymentMethod: method, paymentDetail: method === "CASH" ? null : (paymentDetail || null), userName: userName || "Abebe Owner" },
   });
   await audit("EXPENSE_CREATE", `${category} expense · Br ${Number(amount).toFixed(2)}`, { name: userName }, { expenseId: expense.id });
   return NextResponse.json({ expense });

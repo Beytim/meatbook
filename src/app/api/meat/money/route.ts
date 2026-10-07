@@ -2,6 +2,42 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import type { PeriodKey } from "@/lib/utils";
 import { periodRange } from "@/lib/utils";
+import type { PaymentMethod } from "@/lib/accounts";
+
+interface SubBalance { detail: string | null; amount: number; }
+
+function buildTree(
+  method: PaymentMethod,
+  moves: { detail: string | null; amount: number; direction: string }[],
+  salesByMD: { paymentMethod: string; paymentDetail: string | null; _sum: { total: number | null } }[],
+  expensesByMD: { paymentMethod: string; paymentDetail: string | null; _sum: { amount: number | null } }[],
+  purchasesByMD: { paymentMethod: string; paymentDetail: string | null; _sum: { total: number | null } }[],
+) {
+  const byDetail = new Map<string, number>();
+  for (const m of moves) {
+    const key = m.detail ?? "";
+    const cur = byDetail.get(key) ?? 0;
+    byDetail.set(key, cur + (m.direction === "IN" ? m.amount : -Math.abs(m.amount)));
+  }
+  salesByMD.filter((r) => r.paymentMethod === method).forEach((r) => {
+    const key = r.paymentDetail ?? "";
+    byDetail.set(key, (byDetail.get(key) ?? 0) + Number(r._sum.total ?? 0));
+  });
+  expensesByMD.filter((r) => r.paymentMethod === method).forEach((r) => {
+    const key = r.paymentDetail ?? "";
+    byDetail.set(key, (byDetail.get(key) ?? 0) - Number(r._sum.amount ?? 0));
+  });
+  purchasesByMD.filter((r) => r.paymentMethod === method).forEach((r) => {
+    const key = r.paymentDetail ?? "";
+    byDetail.set(key, (byDetail.get(key) ?? 0) - Number(r._sum.total ?? 0));
+  });
+  const subs: SubBalance[] = Array.from(byDetail.entries())
+    .map(([k, v]) => ({ detail: k || null, amount: Math.round(v * 100) / 100 }))
+    .filter((s) => Math.abs(s.amount) > 0.005)
+    .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  const total = subs.reduce((s, x) => s + x.amount, 0);
+  return { total: Math.round(total * 100) / 100, subAccounts: subs };
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -9,23 +45,19 @@ export async function GET(req: Request) {
   const { from, to } = periodRange(period);
   const createdAtRange = period === "ALL" ? {} : { createdAt: { gte: from, lte: to } };
 
-  // all-time account balances from money moves + completed sales
-  const [cashMoves, mobileMoves, bankMoves, salesByMethod, expensesByMethod, purchasesByMethod] = await Promise.all([
-    db.moneyMove.aggregate({ where: { account: "CASH" }, _sum: { amount: true } }),
-    db.moneyMove.aggregate({ where: { account: "MOBILE" }, _sum: { amount: true } }),
-    db.moneyMove.aggregate({ where: { account: "BANK" }, _sum: { amount: true } }),
-    db.sale.groupBy({ by: ["paymentMethod"], where: { status: "COMPLETED" }, _sum: { total: true } }),
-    db.expense.groupBy({ by: ["paymentMethod"], where: {}, _sum: { amount: true } }),
-    db.purchase.groupBy({ by: ["paymentMethod"], where: {}, _sum: { total: true } }),
+  // all-time balances
+  const [cashMoves, mobileMoves, bankMoves, salesByMD, expensesByMD, purchasesByMD] = await Promise.all([
+    db.moneyMove.findMany({ where: { account: "CASH" } }),
+    db.moneyMove.findMany({ where: { account: "MOBILE" } }),
+    db.moneyMove.findMany({ where: { account: "BANK" } }),
+    db.sale.groupBy({ by: ["paymentMethod", "paymentDetail"], where: { status: "COMPLETED" }, _sum: { total: true } }),
+    db.expense.groupBy({ by: ["paymentMethod", "paymentDetail"], _sum: { amount: true } }),
+    db.purchase.groupBy({ by: ["paymentMethod", "paymentDetail"], _sum: { total: true } }),
   ]);
 
-  const methodSale = (m: string) => salesByMethod.find((g) => g.paymentMethod === m)?._sum.total ?? 0;
-  const methodExpense = (m: string) => expensesByMethod.find((g) => g.paymentMethod === m)?._sum.amount ?? 0;
-  const methodPurchase = (m: string) => purchasesByMethod.find((g) => g.paymentMethod === m)?._sum.total ?? 0;
-
-  const cashBalance = Number(cashMoves._sum.amount ?? 0) + methodSale("CASH") - methodExpense("CASH") - methodPurchase("CASH");
-  const mobileBalance = Number(mobileMoves._sum.amount ?? 0) + methodSale("MOBILE") - methodExpense("MOBILE") - methodPurchase("MOBILE");
-  const bankBalance = Number(bankMoves._sum.amount ?? 0) + methodSale("BANK") - methodExpense("BANK") - methodPurchase("BANK");
+  const cashTree = buildTree("CASH", cashMoves, salesByMD, expensesByMD, purchasesByMD);
+  const mobileTree = buildTree("MOBILE", mobileMoves, salesByMD, expensesByMD, purchasesByMD);
+  const bankTree = buildTree("BANK", bankMoves, salesByMD, expensesByMD, purchasesByMD);
 
   // period flow
   const [periodSalesIn, periodExpensesOut, periodPurchasesOut, periodMoves] = await Promise.all([
@@ -36,46 +68,34 @@ export async function GET(req: Request) {
   ]);
 
   const moneyIn = Number(periodSalesIn._sum.total ?? 0) + periodMoves.filter((m) => m.direction === "IN").reduce((s, m) => s + m.amount, 0);
-  const moneyOut = Number(periodExpensesOut._sum.amount ?? 0) + Number(periodPurchasesOut._sum.total ?? 0) + periodMoves.filter((m) => m.direction === "OUT").reduce((s, m) => s + m.amount, 0);
+  const moneyOut = Number(periodExpensesOut._sum.amount ?? 0) + Number(periodPurchasesOut._sum.total ?? 0) + periodMoves.filter((m) => m.direction === "OUT").reduce((s, m) => s + Math.abs(m.amount), 0);
   const net = moneyIn - moneyOut;
 
   return NextResponse.json({
-    accounts: { cash: cashBalance, mobile: mobileBalance, bank: bankBalance },
+    accounts: { cash: cashTree.total, mobile: mobileTree.total, bank: bankTree.total },
+    tree: { CASH: cashTree, MOBILE: mobileTree, BANK: bankTree },
     flow: { in: moneyIn, out: moneyOut, net },
     transactions: periodMoves.map((m) => ({
-      id: m.id,
-      kind: m.direction,
-      account: m.account,
-      amount: m.amount,
-      reason: m.reason,
-      note: m.note,
-      userName: m.userName,
-      createdAt: m.createdAt,
+      id: m.id, kind: m.direction, account: m.account, detail: m.detail,
+      amount: m.amount, reason: m.reason, note: m.note, userName: m.userName, createdAt: m.createdAt,
     })),
   });
 }
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { direction, account, amount, reason, note, userName } = body as {
-    direction: "IN" | "OUT";
-    account: "CASH" | "MOBILE" | "BANK";
-    amount: number;
-    reason?: string;
-    note?: string;
-    userName?: string;
+  const { direction, account, detail, amount, reason, note, userName } = body as {
+    direction: "IN" | "OUT"; account: "CASH" | "MOBILE" | "BANK"; detail?: string;
+    amount: number; reason?: string; note?: string; userName?: string;
   };
   if (!direction || !account || !amount) {
     return NextResponse.json({ error: "missing fields" }, { status: 400 });
   }
   const move = await db.moneyMove.create({
     data: {
-      direction,
-      account,
+      direction, account, detail: account === "CASH" ? null : (detail || null),
       amount: direction === "OUT" ? -Math.abs(Number(amount)) : Math.abs(Number(amount)),
-      reason: reason || null,
-      note: note || null,
-      userName: userName || "Abebe Owner",
+      reason: reason || null, note: note || null, userName: userName || "Abebe Owner",
     },
   });
   return NextResponse.json({ move });

@@ -13,11 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AccountTreeCard, type AccountTree } from "@/components/app/account-tree";
+import { AccountProviderSelect } from "@/components/app/account-provider-select";
+import { subAccountName, type PaymentMethod } from "@/lib/accounts";
 
 interface MoneyData {
   accounts: { cash: number; mobile: number; bank: number };
+  tree: { CASH: AccountTree; MOBILE: AccountTree; BANK: AccountTree };
   flow: { in: number; out: number; net: number };
-  transactions: { id: string; kind: string; account: string; amount: number; reason: string | null; note: string | null; userName: string | null; createdAt: string }[];
+  transactions: { id: string; kind: string; account: string; detail?: string | null; amount: number; reason: string | null; note: string | null; userName: string | null; createdAt: string }[];
 }
 
 async function fetchMoney(period: PeriodKey): Promise<MoneyData> {
@@ -39,12 +43,12 @@ export function MoneyView() {
         <p className="text-sm text-muted-foreground">Where every Birr came from and went</p>
       </div>
 
-      {/* Cash on hand */}
+      {/* Cash on hand — tree breakdown by sub-account */}
       <div className="mb-2 px-1"><h2 className="text-base font-semibold">Cash on hand — all time</h2></div>
-      <div className="mb-5 grid grid-cols-3 gap-2.5">
-        <AccountTile label="Cash" amount={data?.accounts.cash ?? 0} tone="emerald" />
-        <AccountTile label="Mobile Money" amount={data?.accounts.mobile ?? 0} tone="sky" />
-        <AccountTile label="Bank" amount={data?.accounts.bank ?? 0} tone="violet" />
+      <div className="mb-5 space-y-2.5">
+        <AccountTreeCard method="CASH" label="Cash" tree={data?.tree.CASH ?? { total: 0, subAccounts: [] }} tone="emerald" defaultOpen />
+        <AccountTreeCard method="MOBILE" label="Mobile Money" tree={data?.tree.MOBILE ?? { total: 0, subAccounts: [] }} tone="sky" defaultOpen />
+        <AccountTreeCard method="BANK" label="Bank" tree={data?.tree.BANK ?? { total: 0, subAccounts: [] }} tone="violet" defaultOpen />
       </div>
 
       {/* Cash In / Out tabs */}
@@ -96,11 +100,18 @@ export function MoneyView() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{t.reason || (t.kind === "IN" ? "Cash In" : "Cash Out")}</p>
-                    <p className="text-[11px] text-muted-foreground">{formatDateTime(t.createdAt)} · {t.account.toLowerCase()}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatDateTime(t.createdAt)} · {t.account === "CASH" ? "Cash" : t.account === "MOBILE" ? "Mobile" : "Bank"}
+                      {t.detail ? ` · ${subAccountName(t.account as PaymentMethod, t.detail)}` : ""}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className={cn("text-sm font-bold tnum", t.kind === "IN" ? "text-emerald-400" : "text-red-400")}>{t.kind === "IN" ? "+" : "−"}{formatBirr(Math.abs(t.amount))}</p>
-                    <Pill tone="muted" className="mt-0.5">{t.account}</Pill>
+                    {t.detail ? (
+                      <Pill tone="muted" className="mt-0.5">{subAccountName(t.account as PaymentMethod, t.detail)}</Pill>
+                    ) : (
+                      <Pill tone="muted" className="mt-0.5">{t.account === "CASH" ? "Cash" : t.account === "MOBILE" ? "Mobile" : "Bank"}</Pill>
+                    )}
                   </div>
                 </Card>
               ))}
@@ -111,20 +122,6 @@ export function MoneyView() {
 
       <MoveDialog open={moveOpen} onOpenChange={setMoveOpen} direction={tab} period={period} />
     </div>
-  );
-}
-
-function AccountTile({ label, amount, tone }: { label: string; amount: number; tone: "emerald" | "sky" | "violet" }) {
-  const tones = {
-    emerald: "from-emerald-500/15 to-emerald-500/5 ring-emerald-500/20 text-emerald-400",
-    sky: "from-sky-500/15 to-sky-500/5 ring-sky-500/20 text-sky-400",
-    violet: "from-violet-500/15 to-violet-500/5 ring-violet-500/20 text-violet-400",
-  }[tone];
-  return (
-    <Card className={cn("bg-gradient-to-br p-3 ring-1", tones)}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">{label}</p>
-      <p className={cn("mt-1 text-sm font-bold tnum tracking-tight", amount < 0 && "text-red-400")}>{formatBirr(amount)}</p>
-    </Card>
   );
 }
 
@@ -141,13 +138,14 @@ function FlowTile({ label, value, tone, sub }: { label: string; value: number; t
 function MoveDialog({ open, onOpenChange, direction, period }: { open: boolean; onOpenChange: (o: boolean) => void; direction: "IN" | "OUT"; period: PeriodKey }) {
   const qc = useQueryClient();
   const [account, setAccount] = React.useState<"CASH" | "MOBILE" | "BANK">("CASH");
+  const [detail, setDetail] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [reason, setReason] = React.useState("");
   const [note, setNote] = React.useState("");
 
   const save = useMutation({
     mutationFn: async () => {
-      const r = await fetch("/api/meat/money", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ direction, account, amount: Number(amount), reason, note }) });
+      const r = await fetch("/api/meat/money", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ direction, account, detail, amount: Number(amount), reason, note }) });
       if (!r.ok) throw new Error("failed");
       return r.json();
     },
@@ -155,7 +153,7 @@ function MoveDialog({ open, onOpenChange, direction, period }: { open: boolean; 
       toast.success(direction === "IN" ? "Cash In recorded" : "Cash Out recorded");
       qc.invalidateQueries({ queryKey: ["money", period] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
-      setAmount(""); setReason(""); setNote("");
+      setAmount(""); setReason(""); setNote(""); setDetail("");
       onOpenChange(false);
     },
     onError: () => toast.error("Could not save"),
@@ -172,12 +170,20 @@ function MoveDialog({ open, onOpenChange, direction, period }: { open: boolean; 
             <Label className="text-xs">Account</Label>
             <div className="mt-1 grid grid-cols-3 gap-1.5">
               {(["CASH", "MOBILE", "BANK"] as const).map((a) => (
-                <button key={a} onClick={() => setAccount(a)} className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", account === a ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+                <button key={a} onClick={() => { setAccount(a); setDetail(""); }} className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", account === a ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
                   {a === "CASH" ? "Cash" : a === "MOBILE" ? "Mobile" : "Bank"}
                 </button>
               ))}
             </div>
           </div>
+          {account !== "CASH" && (
+            <div>
+              <Label className="text-xs">{account === "MOBILE" ? "Provider" : "Bank"}</Label>
+              <div className="mt-1">
+                <AccountProviderSelect method={account} value={detail} onChange={setDetail} />
+              </div>
+            </div>
+          )}
           <div>
             <Label className="text-xs">Amount (Br)</Label>
             <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" className="mt-1 tnum text-lg" autoFocus />

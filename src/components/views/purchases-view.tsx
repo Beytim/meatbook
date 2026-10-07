@@ -23,6 +23,8 @@ import {
   PeriodTabs, SearchInput, EmptyState, StatTile, Pill,
   PageScaffold, ListSkeleton, Money, Kg,
 } from "@/components/app/primitives";
+import { AccountProviderSelect } from "@/components/app/account-provider-select";
+import { subAccountName, type PaymentMethod } from "@/lib/accounts";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface PurchaseItem {
@@ -38,6 +40,7 @@ interface Purchase {
   supplier: string | null;
   note: string | null;
   paymentMethod: string;
+  paymentDetail?: string | null;
   total: number;
   userName: string | null;
   createdAt: string;
@@ -250,7 +253,9 @@ function PurchaseRow({ purchase: p }: { purchase: Purchase }) {
           <p className="text-sm font-bold tnum text-red-400">
             −<Money amount={p.total} />
           </p>
-          <Pill tone="muted" className="mt-0.5">{paymentLabel(p.paymentMethod)}</Pill>
+          <Pill tone="muted" className="mt-0.5">
+            {p.paymentDetail ? subAccountName(p.paymentMethod as PaymentMethod, p.paymentDetail) : paymentLabel(p.paymentMethod)}
+          </Pill>
         </div>
       </div>
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -289,12 +294,14 @@ function RecordPurchaseDialog({
 
   const [supplier, setSupplier] = React.useState("");
   const [paymentMethod, setPaymentMethod] = React.useState<"CASH" | "MOBILE" | "BANK">("CASH");
+  const [paymentDetail, setPaymentDetail] = React.useState("");
   const [note, setNote] = React.useState("");
   const [rows, setRows] = React.useState<RowItem[]>(() => [emptyRow()]);
 
   function reset() {
     setSupplier("");
     setPaymentMethod("CASH");
+    setPaymentDetail("");
     setNote("");
     setRows([emptyRow()]);
   }
@@ -350,6 +357,7 @@ function RecordPurchaseDialog({
           supplier: supplier.trim() || undefined,
           note: note.trim() || undefined,
           paymentMethod,
+          paymentDetail,
           items,
         }),
       });
@@ -399,7 +407,7 @@ function RecordPurchaseDialog({
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setPaymentMethod(m)}
+                  onClick={() => { setPaymentMethod(m); setPaymentDetail(""); }}
                   className={cn(
                     "rounded-lg py-2 text-xs font-semibold tap-scale",
                     paymentMethod === m
@@ -412,6 +420,15 @@ function RecordPurchaseDialog({
               ))}
             </div>
           </div>
+
+          {paymentMethod !== "CASH" && (
+            <div>
+              <Label className="text-xs">{paymentMethod === "MOBILE" ? "Provider" : "Bank"}</Label>
+              <div className="mt-1">
+                <AccountProviderSelect method={paymentMethod} value={paymentDetail} onChange={setPaymentDetail} />
+              </div>
+            </div>
+          )}
 
           <div>
             <div className="flex items-center justify-between">

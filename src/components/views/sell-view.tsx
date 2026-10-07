@@ -7,6 +7,7 @@ import { useNav } from "@/lib/nav";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Pill } from "@/components/app/primitives";
+import { AccountProviderSelect } from "@/components/app/account-provider-select";
 
 interface Product {
   id: string;
@@ -258,7 +259,7 @@ export function SellView() {
                 {(["CASH", "MOBILE", "BANK"] as PaymentMethod[]).map((m) => (
                   <button
                     key={m}
-                    onClick={() => setPayment(m)}
+                    onClick={() => { setPayment(m); if (m === "CASH") setPaymentDetail(""); }}
                     className={cn(
                       "rounded-lg py-1.5 text-[11px] font-semibold tap-scale",
                       payment === m ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground"
@@ -269,12 +270,13 @@ export function SellView() {
                 ))}
               </div>
               {payment !== "CASH" && (
-                <input
-                  value={paymentDetail}
-                  onChange={(e) => setPaymentDetail(e.target.value)}
-                  placeholder={payment === "MOBILE" ? "Telebirr / provider" : "CBE / bank name"}
-                  className="mb-2.5 h-9 w-full rounded-lg border border-border/60 bg-background/60 px-3 text-xs focus:border-primary/50 focus:outline-none"
-                />
+                <div className="mb-2.5">
+                  <AccountProviderSelect
+                    method={payment}
+                    value={paymentDetail}
+                    onChange={setPaymentDetail}
+                  />
+                </div>
               )}
               <button
                 onClick={() => checkout.mutate()}

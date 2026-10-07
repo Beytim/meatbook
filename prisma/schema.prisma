@@ -77,6 +77,7 @@ model Purchase {
   note        String?
   total       Float    @default(0)
   paymentMethod String @default("CASH")
+  paymentDetail String? // sub-account: Telebirr, Mpesa, CBE, United, Zemen...
   userId      String?
   userName    String?
   createdAt   DateTime @default(now())
@@ -121,6 +122,7 @@ model Expense {
   amount      Float    @default(0)
   note        String?
   paymentMethod String @default("CASH")
+  paymentDetail String? // sub-account: Telebirr, Mpesa, CBE, United, Zemen...
   userId      String?
   userName    String?
   createdAt   DateTime @default(now())
@@ -151,6 +153,7 @@ model MoneyMove {
   id          String   @id @default(cuid())
   direction   String   // IN | OUT
   account     String   @default("CASH") // CASH | MOBILE | BANK
+  detail      String?  // sub-account: Telebirr, Mpesa, CBE, United, Zemen...
   amount      Float    @default(0)
   reason      String?
   note        String?
@@ -160,6 +163,7 @@ model MoneyMove {
 
   @@index([createdAt])
   @@index([account])
+  @@index([detail])
 }
 
 // ─── Staff ────────────────────────────────────────────────────────────

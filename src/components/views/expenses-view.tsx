@@ -23,6 +23,8 @@ import {
   PeriodTabs, SearchInput, EmptyState, Pill,
   PageScaffold, ListSkeleton, Money,
 } from "@/components/app/primitives";
+import { AccountProviderSelect } from "@/components/app/account-provider-select";
+import { subAccountName, type PaymentMethod } from "@/lib/accounts";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface Expense {
@@ -31,6 +33,7 @@ interface Expense {
   amount: number;
   note: string | null;
   paymentMethod: string;
+  paymentDetail?: string | null;
   userName: string | null;
   createdAt: string;
 }
@@ -236,7 +239,9 @@ function ExpenseRow({ expense: e }: { expense: Expense }) {
           <p className="text-sm font-bold tnum text-red-400">
             −<Money amount={e.amount} />
           </p>
-          <Pill tone="muted" className="mt-0.5">{paymentLabel(e.paymentMethod)}</Pill>
+          <Pill tone="muted" className="mt-0.5">
+            {e.paymentDetail ? subAccountName(e.paymentMethod as PaymentMethod, e.paymentDetail) : paymentLabel(e.paymentMethod)}
+          </Pill>
         </div>
       </div>
     </Card>
@@ -255,12 +260,14 @@ function RecordExpenseDialog({
   const [category, setCategory] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [paymentMethod, setPaymentMethod] = React.useState<"CASH" | "MOBILE" | "BANK">("CASH");
+  const [paymentDetail, setPaymentDetail] = React.useState("");
   const [note, setNote] = React.useState("");
 
   function reset() {
     setCategory("");
     setAmount("");
     setPaymentMethod("CASH");
+    setPaymentDetail("");
     setNote("");
   }
 
@@ -275,6 +282,7 @@ function RecordExpenseDialog({
           category: category.trim(),
           amount: Number(amount),
           paymentMethod,
+          paymentDetail,
           note: note.trim() || undefined,
         }),
       });
@@ -337,7 +345,7 @@ function RecordExpenseDialog({
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setPaymentMethod(m)}
+                  onClick={() => { setPaymentMethod(m); setPaymentDetail(""); }}
                   className={cn(
                     "rounded-lg py-2 text-xs font-semibold tap-scale",
                     paymentMethod === m
@@ -350,6 +358,15 @@ function RecordExpenseDialog({
               ))}
             </div>
           </div>
+
+          {paymentMethod !== "CASH" && (
+            <div>
+              <Label className="text-xs">{paymentMethod === "MOBILE" ? "Provider" : "Bank"}</Label>
+              <div className="mt-1">
+                <AccountProviderSelect method={paymentMethod} value={paymentDetail} onChange={setPaymentDetail} />
+              </div>
+            </div>
+          )}
 
           <div>
             <Label className="text-xs">Note (optional)</Label>

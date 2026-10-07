@@ -39,16 +39,60 @@ async function main() {
   const openedAt = new Date(); openedAt.setHours(10, 30, 0, 0);
   await db.cashSession.create({ data: { opening: 5000, status: "OPEN", openedBy: "Abebe Owner", openedAt } });
 
+  // Opening balances broken down by sub-account so the dashboard tree shows real data:
+  // Mobile Br 10,000 = Telebirr 6,000 + M-Pesa 4,000
+  // Bank Br 10,000 = CBE 5,000 + United 3,000 + Zemen 2,000
+  // (plus a loan OUT on CBE to create the overdraft feel)
   await db.moneyMove.createMany({
     data: [
-      { direction: "IN", account: "CASH", amount: 16900.4, reason: "Opening balance" },
-      { direction: "IN", account: "MOBILE", amount: 9205, reason: "Opening balance" },
-      { direction: "OUT", account: "BANK", amount: 104062, reason: "Opening balance (overdraft)" },
+      { direction: "IN", account: "CASH", detail: null, amount: 16900.4, reason: "Opening balance" },
+      { direction: "IN", account: "MOBILE", detail: "Telebirr", amount: 6000, reason: "Opening balance" },
+      { direction: "IN", account: "MOBILE", detail: "M-Pesa", amount: 4000, reason: "Opening balance" },
+      { direction: "IN", account: "BANK", detail: "CBE", amount: 5000, reason: "Opening balance" },
+      { direction: "IN", account: "BANK", detail: "United", amount: 3000, reason: "Opening balance" },
+      { direction: "IN", account: "BANK", detail: "Zemen", amount: 2000, reason: "Opening balance" },
+      { direction: "OUT", account: "BANK", detail: "CBE", amount: 104062, reason: "Loan repayment (overdraft)" },
+      { direction: "OUT", account: "MOBILE", detail: "Telebirr", amount: 795, reason: "Airtime / float top-up" },
     ],
   });
 
+  // A couple of expenses + a purchase so money-out also shows sub-account detail.
+  await db.expense.createMany({
+    data: [
+      { category: "Rent", amount: 4000, note: "Shop rent — October", paymentMethod: "BANK", paymentDetail: "CBE", userName: "Abebe Owner" },
+      { category: "Electricity", amount: 850, note: "Meter top-up", paymentMethod: "MOBILE", paymentDetail: "Telebirr", userName: "Sara Manager" },
+      { category: "Transport", amount: 300, note: "Fuel", paymentMethod: "CASH", userName: "Dawit Cashier" },
+    ],
+  });
+
+  await db.purchase.create({
+    data: {
+      supplier: "Kera Slaughterhouse",
+      note: "Morning stock — beef",
+      paymentMethod: "BANK",
+      paymentDetail: "CBE",
+      total: 12000,
+      userName: "Abebe Owner",
+      items: {
+        create: [
+          { name: "Meat (carcass)", kg: 10, unitCost: 1100, total: 11000 },
+          { name: "Ribs (offal)", kg: 2, unitCost: 500, total: 1000 },
+        ],
+      },
+    },
+  });
+
   const types = ["TAKE_HOME", "EAT_HERE"];
-  const payments: [string, string?][] = [["CASH"], ["MOBILE", "Telebirr"], ["BANK", "CBE"]];
+  // Sales: spread across banks/mobile providers so the breakdown is rich.
+  const payments: [string, string?][] = [
+    ["CASH", null],
+    ["MOBILE", "Telebirr"],
+    ["MOBILE", "M-Pesa"],
+    ["BANK", "CBE"],
+    ["BANK", "United"],
+    ["BANK", "Zemen"],
+    ["BANK", "Awash"],
+  ];
   const cashiers = ["Abebe Owner", "Sara Manager", "Dawit Cashier"];
   let saleNumber = 1;
   const now = new Date();

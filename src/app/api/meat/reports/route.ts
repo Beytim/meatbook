@@ -11,15 +11,18 @@ export async function GET(req: Request) {
 
   const completedWhere = { status: "COMPLETED" as const, ...createdAtRange };
 
-  const [salesAgg, salesCount, kgAgg, byType, byMethod, byProduct, expensesAgg, purchasesAgg, wastageAgg] = await Promise.all([
+  const [salesAgg, salesCount, kgAgg, byType, byMethod, byMethodDetail, byProduct, expensesAgg, expensesByMD, purchasesAgg, purchasesByMD, wastageAgg] = await Promise.all([
     db.sale.aggregate({ where: completedWhere, _sum: { total: true } }),
     db.sale.count({ where: completedWhere }),
     db.sale.aggregate({ where: completedWhere, _sum: { totalKg: true } }),
     db.sale.groupBy({ by: ["type"], where: completedWhere, _sum: { total: true, totalKg: true }, _count: true }),
     db.sale.groupBy({ by: ["paymentMethod"], where: completedWhere, _sum: { total: true } }),
+    db.sale.groupBy({ by: ["paymentMethod", "paymentDetail"], where: completedWhere, _sum: { total: true } }),
     db.saleItem.groupBy({ by: ["productId", "name"], where: { sale: completedWhere }, _sum: { total: true, kg: true }, _count: true }),
     db.expense.aggregate({ where: createdAtRange, _sum: { amount: true } }),
+    db.expense.groupBy({ by: ["paymentMethod", "paymentDetail"], where: createdAtRange, _sum: { amount: true } }),
     db.purchase.aggregate({ where: createdAtRange, _sum: { total: true } }),
+    db.purchase.groupBy({ by: ["paymentMethod", "paymentDetail"], where: createdAtRange, _sum: { total: true } }),
     db.wastage.aggregate({ where: createdAtRange, _sum: { kg: true } }),
   ]);
 
@@ -35,6 +38,13 @@ export async function GET(req: Request) {
 
   const methodTotal = byMethod.reduce((s, m) => s + Number(m._sum.total ?? 0), 0) || 1;
 
+  // sub-account breakdown for each method (Telebirr/M-Pesa/CBE/United/Zemen...)
+  const subAccountsByMethod = (method: string) =>
+    byMethodDetail
+      .filter((r) => r.paymentMethod === method)
+      .map((r) => ({ detail: r.paymentDetail, revenue: Number(r._sum.total ?? 0) }))
+      .sort((a, b) => b.revenue - a.revenue);
+
   return NextResponse.json({
     period,
     netRevenue,
@@ -48,7 +58,11 @@ export async function GET(req: Request) {
       method: m.paymentMethod,
       revenue: Number(m._sum.total ?? 0),
       share: Number(m._sum.total ?? 0) / methodTotal,
+      subAccounts: subAccountsByMethod(m.paymentMethod),
     })),
+    // money-out breakdown by sub-account too
+    expenseSubAccounts: expensesByMD.map((r) => ({ method: r.paymentMethod, detail: r.paymentDetail, amount: Number(r._sum.amount ?? 0) })),
+    purchaseSubAccounts: purchasesByMD.map((r) => ({ method: r.paymentMethod, detail: r.paymentDetail, amount: Number(r._sum.total ?? 0) })),
     products: byProduct
       .map((p) => ({ name: p.name, revenue: Number(p._sum.total ?? 0), kg: Number(p._sum.kg ?? 0), count: p._count }))
       .sort((a, b) => b.revenue - a.revenue),

@@ -6,6 +6,7 @@ import { useNav } from "@/lib/nav";
 import { formatBirr, formatKg, formatTime } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/app/primitives";
+import { AccountTreeCard, type AccountTree } from "@/components/app/account-tree";
 
 interface DashboardData {
   settings: { shopName: string; currency: string };
@@ -19,6 +20,7 @@ interface DashboardData {
   lastSaleNumber: number | null;
   openSession: { id: string; opening: number; openedAt: string; openedBy: string | null } | null;
   accounts: { cash: number; mobile: number; bank: number };
+  tree: { CASH: AccountTree; MOBILE: AccountTree; BANK: AccountTree };
 }
 
 async function fetchDashboard(): Promise<DashboardData> {
@@ -94,15 +96,15 @@ export function HomeView() {
         </div>
       </Card>
 
-      {/* Money — where it is */}
+      {/* Money — where it is (tree breakdown by sub-account) */}
       <div className="mb-2 flex items-center justify-between px-1">
         <h2 className="text-base font-semibold tracking-tight">Money — where it is</h2>
         <button onClick={() => go("MONEY")} className="text-xs font-medium text-primary">Open Money →</button>
       </div>
-      <div className="mb-5 grid grid-cols-3 gap-2.5">
-        <AccountCard label="Cash" amount={data.accounts.cash} cur={cur} tone="emerald" />
-        <AccountCard label="Mobile" amount={data.accounts.mobile} cur={cur} tone="sky" />
-        <AccountCard label="Bank" amount={data.accounts.bank} cur={cur} tone="violet" />
+      <div className="mb-5 space-y-2.5">
+        <AccountTreeCard method="CASH" label="Cash" tree={data.tree.CASH} currency={cur} tone="emerald" defaultOpen />
+        <AccountTreeCard method="MOBILE" label="Mobile Money" tree={data.tree.MOBILE} currency={cur} tone="sky" defaultOpen />
+        <AccountTreeCard method="BANK" label="Bank" tree={data.tree.BANK} currency={cur} tone="violet" defaultOpen />
       </div>
 
       {/* Cash session */}
@@ -160,20 +162,6 @@ function QuickAction({ label, icon, onClick, tone }: { label: string; icon: Reac
       {icon}
       <span className="text-[11px] font-semibold">{label}</span>
     </button>
-  );
-}
-
-function AccountCard({ label, amount, cur, tone }: { label: string; amount: number; cur: string; tone: "emerald" | "sky" | "violet" }) {
-  const tones = {
-    emerald: "from-emerald-500/15 to-emerald-500/5 text-emerald-400 ring-emerald-500/20",
-    sky: "from-sky-500/15 to-sky-500/5 text-sky-400 ring-sky-500/20",
-    violet: "from-violet-500/15 to-violet-500/5 text-violet-400 ring-violet-500/20",
-  }[tone];
-  return (
-    <Card className={`relative overflow-hidden bg-gradient-to-br p-3 ring-1 ${tones}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider opacity-80">{label}</p>
-      <p className="mt-1 text-sm font-bold tnum tracking-tight">{formatBirr(amount, cur)}</p>
-    </Card>
   );
 }
 

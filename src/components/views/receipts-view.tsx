@@ -310,18 +310,18 @@ export function ReceiptDialog({
   return (
     <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md p-4 sm:p-5">
+        <DialogHeader className="text-center">
+          <DialogTitle className="flex items-center justify-center gap-2 text-base">
+            <span>Receipt</span>
+            {sale && <span className="tnum">#{sale.number}</span>}
+          </DialogTitle>
+        </DialogHeader>
         {isLoading || !sale ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             Loading receipt…
           </div>
         ) : (
           <>
-            <DialogHeader className="text-center">
-              <DialogTitle className="flex items-center justify-center gap-2 text-base">
-                <span>Receipt</span>
-                <span className="tnum">#{sale.number}</span>
-              </DialogTitle>
-            </DialogHeader>
 
             <div className="max-h-[60vh] overflow-y-auto px-1">
               <div className="mx-auto max-w-[320px] rounded-xl bg-background p-4 font-mono text-[12px] leading-relaxed text-foreground ring-1 ring-border/60">

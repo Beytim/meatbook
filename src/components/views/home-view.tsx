@@ -7,6 +7,7 @@ import { formatBirr, formatKg, formatTime } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/app/primitives";
 import { AccountTreeCard, type AccountTree } from "@/components/app/account-tree";
+import { animalName, animalEmoji, animalTone } from "@/lib/animals";
 
 interface DashboardData {
   settings: { shopName: string; currency: string };
@@ -21,6 +22,24 @@ interface DashboardData {
   openSession: { id: string; opening: number; openedAt: string; openedBy: string | null } | null;
   accounts: { cash: number; mobile: number; bank: number };
   tree: { CASH: AccountTree; MOBILE: AccountTree; BANK: AccountTree };
+  flow: {
+    todayKgSold: number;
+    purchaseKg: number;
+    purchaseAmount: number;
+    todayExpenses: number;
+    todayRevenue: number;
+    profit: number;
+    profitMargin: number;
+    profitStatus: "loss" | "break_even" | "healthy";
+    purchaseCoverage: number;
+    kgRatio: number;
+  };
+  todayPurchases: {
+    count: number;
+    total: number;
+    totalKg: number;
+    animalBreakdown: { type: string; kg: number; amount: number; count: number; perKg: number }[];
+  };
 }
 
 async function fetchDashboard(): Promise<DashboardData> {
@@ -96,8 +115,16 @@ export function HomeView() {
         </div>
       </Card>
 
+      {/* ─── Stock & Money Flow: did today's sales cover today's purchases? ─── */}
+      <StockFlowCard flow={data.flow} cur={cur} />
+
+      {/* ─── Today's Purchases — animal-type breakdown ─── */}
+      {data.todayPurchases.count > 0 && (
+        <TodayPurchasesCard purchases={data.todayPurchases} cur={cur} onOpen={() => go("PURCHASES")} />
+      )}
+
       {/* Today's sales by media — same source as Today's Sales card above */}
-      <div className="mb-2 flex items-center justify-between px-1">
+      <div className="mb-2 mt-4 flex items-center justify-between px-1">
         <div>
           <h2 className="text-base font-semibold tracking-tight">Today&apos;s sales — by media</h2>
           <p className="text-[11px] text-muted-foreground">Where today&apos;s revenue came from. All-time balances are in Money.</p>
@@ -165,6 +192,169 @@ function QuickAction({ label, icon, onClick, tone }: { label: string; icon: Reac
       {icon}
       <span className="text-[11px] font-semibold">{label}</span>
     </button>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Stock & Money Flow card — the owner's key business-health indicator.
+// Answers: "Did today's sales cover today's purchases?" with color-coded
+// profit meter: red (loss) → amber (break-even) → green (healthy).
+// ════════════════════════════════════════════════════════════════════════
+function StockFlowCard({ flow, cur }: { flow: DashboardData["flow"]; cur: string }) {
+  const { profit, profitStatus, purchaseAmount, todayRevenue, purchaseKg, todayKgSold, todayExpenses, purchaseCoverage, kgRatio } = flow;
+
+  // color theme by profit status
+  const statusConfig = {
+    loss: {
+      ring: "ring-red-500/30",
+      bg: "from-red-500/10 to-card",
+      text: "text-red-400",
+      label: "Loss today",
+      bar: "bg-red-500",
+      pill: "bg-red-500/15 text-red-400 ring-red-500/25",
+    },
+    break_even: {
+      ring: "ring-amber-500/30",
+      bg: "from-amber-500/10 to-card",
+      text: "text-amber-400",
+      label: "Break-even",
+      bar: "bg-amber-500",
+      pill: "bg-amber-500/15 text-amber-400 ring-amber-500/25",
+    },
+    healthy: {
+      ring: "ring-emerald-500/30",
+      bg: "from-emerald-500/10 to-card",
+      text: "text-emerald-400",
+      label: "Healthy profit",
+      bar: "bg-emerald-500",
+      pill: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/25",
+    },
+  }[profitStatus];
+
+  // Coverage bar: how much of purchases were covered by sales (0% → 100%+)
+  const coveragePct = Math.max(0, Math.min(100, purchaseCoverage * 100));
+
+  // KG flow bar: sold vs purchased
+  const kgMax = Math.max(purchaseKg, todayKgSold, 0.01);
+  const soldPct = (todayKgSold / kgMax) * 100;
+  const boughtPct = (purchaseKg / kgMax) * 100;
+
+  return (
+    <Card className={`mb-4 overflow-hidden bg-gradient-to-br ${statusConfig.bg} p-4 ring-1 ${statusConfig.ring} card-raised`}>
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">Stock &amp; Money Flow</h2>
+          <p className="text-[11px] text-muted-foreground">Did today&apos;s sales cover today&apos;s purchases?</p>
+        </div>
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${statusConfig.pill}`}>
+          {statusConfig.label}
+        </span>
+      </div>
+
+      {/* Profit hero number */}
+      <div className="mb-3 flex items-end justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Realized profit today</p>
+          <p className={`text-2xl font-bold tnum ${statusConfig.text}`}>{formatBirr(profit, cur)}</p>
+        </div>
+        <div className="text-right text-[11px] text-muted-foreground">
+          <p>{formatBirr(todayRevenue, cur)} sales</p>
+          <p>− {formatBirr(purchaseAmount, cur)} purchases</p>
+          <p>− {formatBirr(todayExpenses, cur)} expenses</p>
+        </div>
+      </div>
+
+      {/* Coverage bar: sales vs purchases */}
+      {purchaseAmount > 0 && (
+        <div className="mb-3">
+          <div className="mb-1 flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground">Sales covering purchases</span>
+            <span className={`font-bold tnum ${purchaseCoverage >= 1 ? "text-emerald-400" : "text-amber-400"}`}>
+              {purchaseCoverage.toFixed(0)}%
+            </span>
+          </div>
+          <div className="relative h-2 overflow-hidden rounded-full bg-muted/60">
+            <div
+              className={`h-full rounded-full ${purchaseCoverage >= 1 ? "bg-emerald-500" : "bg-amber-500"}`}
+              style={{ width: `${coveragePct}%` }}
+            />
+            {/* break-even marker at 100% */}
+            <div className="absolute right-0 top-0 h-full w-0.5 bg-foreground/40" />
+          </div>
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            {purchaseCoverage >= 1
+              ? `Surplus: ${formatBirr(todayRevenue - purchaseAmount, cur)} beyond animal cost`
+              : `Short by ${formatBirr(purchaseAmount - todayRevenue, cur)} to cover animals`}
+          </p>
+        </div>
+      )}
+
+      {/* KG flow: sold vs bought */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-background/50 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">Sold today</p>
+          <p className="mt-0.5 text-base font-bold tnum">{formatKg(todayKgSold)}</p>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted/50">
+            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${soldPct}%` }} />
+          </div>
+        </div>
+        <div className="rounded-xl bg-background/50 p-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">Bought today</p>
+          <p className="mt-0.5 text-base font-bold tnum">{formatKg(purchaseKg)}</p>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted/50">
+            <div className="h-full rounded-full bg-amber-500" style={{ width: `${boughtPct}%` }} />
+          </div>
+        </div>
+      </div>
+
+      {purchaseKg > 0 && (
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          KG ratio: <span className={`font-semibold tnum ${kgRatio >= 1 ? "text-emerald-400" : kgRatio > 0 ? "text-amber-400" : "text-red-400"}`}>{(kgRatio * 100).toFixed(0)}%</span>
+          {" "}of bought weight sold today
+          {kgRatio < 1 && purchaseKg > 0 ? ` · ${formatKg(purchaseKg - todayKgSold)} in stock` : ""}
+        </p>
+      )}
+    </Card>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Today's Purchases card — animal-type breakdown (Ox/Sheep/Goat)
+// ════════════════════════════════════════════════════════════════════════
+function TodayPurchasesCard({ purchases, cur, onOpen }: {
+  purchases: DashboardData["todayPurchases"];
+  cur: string;
+  onOpen: () => void;
+}) {
+  return (
+    <Card className="mb-4 overflow-hidden card-raised">
+      <div className="flex items-center justify-between border-b border-border/60 bg-amber-500/5 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-500/15 text-amber-400 text-xs font-bold">↓</span>
+          <div>
+            <h2 className="text-sm font-bold tracking-tight">Today&apos;s Purchases</h2>
+            <p className="text-[11px] text-muted-foreground">{purchases.count} purchase{purchases.count > 1 ? "s" : ""} · {formatKg(purchases.totalKg)} · {formatBirr(purchases.total, cur)}</p>
+          </div>
+        </div>
+        <button onClick={onOpen} className="text-[11px] font-medium text-primary">View →</button>
+      </div>
+      <div className="divide-y divide-border/40">
+        {purchases.animalBreakdown.map((a) => (
+          <div key={a.type} className="flex items-center gap-3 px-4 py-2.5">
+            <span className={`grid h-9 w-9 place-items-center rounded-xl text-lg ring-1 ${animalTone(a.type)}`}>
+              {animalEmoji(a.type)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{animalName(a.type)}{a.count > 1 ? ` ×${a.count}` : ""}</p>
+              <p className="text-[11px] text-muted-foreground tnum">
+                {formatKg(a.kg)} · {formatBirr(a.perKg, cur)}/kg cost
+              </p>
+            </div>
+            <p className="shrink-0 text-sm font-bold tnum text-amber-400">−{formatBirr(a.amount, cur)}</p>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 

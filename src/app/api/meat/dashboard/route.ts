@@ -18,8 +18,9 @@ export async function GET() {
   const today = periodRange("TODAY");
   // Single source of truth for the dashboard: today's completed sales.
   const todayWhere = { createdAt: { gte: today.from, lte: today.to }, status: "COMPLETED" };
+  const todayRange = { createdAt: { gte: today.from, lte: today.to } };
 
-  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail] = await Promise.all([
+  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail, todayPurchases, todayExpensesAgg] = await Promise.all([
     db.sale.count({ where: todayWhere }),
     db.sale.aggregate({ where: todayWhere, _sum: { total: true, totalKg: true }, _count: true }),
     db.sale.aggregate({ where: { ...todayWhere, type: "TAKE_HOME" }, _sum: { total: true, totalKg: true }, _count: true }),
@@ -28,6 +29,9 @@ export async function GET() {
     db.cashSession.findFirst({ where: { status: "OPEN" }, orderBy: { openedAt: "desc" } }),
     // TODAY's sales grouped by method + sub-account detail — same data as Today's Sales.
     db.sale.groupBy({ by: ["paymentMethod", "paymentDetail"], where: todayWhere, _sum: { total: true } }),
+    // TODAY's purchases (whole animals) for the stock-flow card
+    db.purchase.findMany({ where: todayRange, include: { items: true } }),
+    db.expense.aggregate({ where: todayRange, _sum: { amount: true } }),
   ]);
 
   // Build a tree per method from TODAY's sales only.
@@ -52,6 +56,47 @@ export async function GET() {
 
   const todayRevenue = Number(todaySalesAgg._sum.total ?? 0);
   const treeSum = cashTree.total + mobileTree.total + bankTree.total;
+
+  // ─── Stock & Money Flow (today) ─────────────────────────────────────
+  // The owner's key question: "Did today's sales cover today's purchases?"
+  const todayKgSold = Number(todaySalesAgg._sum.totalKg ?? 0);
+
+  // Today's purchases: total amount + total kg + breakdown by animal type
+  let purchaseAmount = 0;
+  let purchaseKg = 0;
+  const animalBreakdown: Record<string, { kg: number; amount: number; count: number }> = {};
+  for (const p of todayPurchases) {
+    purchaseAmount += p.total;
+    for (const i of p.items) {
+      purchaseKg += i.kg;
+      const key = i.animalType || "OTHER";
+      if (!animalBreakdown[key]) animalBreakdown[key] = { kg: 0, amount: 0, count: 0 };
+      animalBreakdown[key].kg += i.kg;
+      animalBreakdown[key].amount += i.total;
+      animalBreakdown[key].count += 1;
+    }
+  }
+  purchaseAmount = Math.round(purchaseAmount * 100) / 100;
+
+  const todayExpenses = Number(todayExpensesAgg._sum.amount ?? 0);
+  // Realized profit today = sales - purchases - expenses
+  // (purchases = cost of the animals bought today; sales = revenue from cuts sold today)
+  const profit = Math.round((todayRevenue - purchaseAmount - todayExpenses) * 100) / 100;
+
+  // Profit status for color coding:
+  //   loss     (profit < 0)            → red
+  //   break-even (0 <= profit < 10% of purchases) → amber
+  //   healthy   (profit >= 10% of purchases)      → green
+  // When there are no purchases, base it on expenses instead.
+  const profitBase = purchaseAmount > 0 ? purchaseAmount : (todayExpenses > 0 ? todayExpenses : 1);
+  const profitMargin = profit / profitBase;
+  let profitStatus: "loss" | "break_even" | "healthy";
+  if (profit < 0) profitStatus = "loss";
+  else if (profitMargin < 0.1) profitStatus = "break_even";
+  else profitStatus = "healthy";
+
+  // Coverage: did sales cover purchases? 0 = none, 1 = break-even, >1 = surplus
+  const purchaseCoverage = purchaseAmount > 0 ? todayRevenue / purchaseAmount : (todayRevenue > 0 ? 1 : 0);
 
   return NextResponse.json({
     settings: { shopName: settings.shopName, currency: settings.currency },
@@ -84,6 +129,34 @@ export async function GET() {
       CASH: cashTree,
       MOBILE: mobileTree,
       BANK: bankTree,
+    },
+    // ─── Stock & Money Flow (today's business health) ───────────────
+    flow: {
+      todayKgSold,
+      purchaseKg: Math.round(purchaseKg * 100) / 100,
+      purchaseAmount,
+      todayExpenses,
+      todayRevenue,
+      profit,
+      profitMargin: Math.round(profitMargin * 1000) / 1000,
+      profitStatus,
+      purchaseCoverage: Math.round(purchaseCoverage * 1000) / 1000,
+      // kg ratio: sold / purchased (1.0 = sold exactly what was bought today)
+      kgRatio: purchaseKg > 0 ? Math.round((todayKgSold / purchaseKg) * 1000) / 1000 : 0,
+    },
+    // Today's purchases broken down by animal type (Ox/Sheep/Goat)
+    todayPurchases: {
+      count: todayPurchases.length,
+      total: purchaseAmount,
+      totalKg: Math.round(purchaseKg * 100) / 100,
+      animalBreakdown: Object.entries(animalBreakdown).map(([type, v]) => ({
+        type,
+        kg: Math.round(v.kg * 100) / 100,
+        amount: Math.round(v.amount * 100) / 100,
+        count: v.count,
+        // derived per-kg cost
+        perKg: v.kg > 0 ? Math.round((v.amount / v.kg) * 100) / 100 : 0,
+      })).sort((a, b) => b.amount - a.amount),
     },
     // integrity check: tree sum must equal today's revenue
     _sync: { todayRevenue, treeSum, matched: Math.abs(todayRevenue - treeSum) < 0.01 },

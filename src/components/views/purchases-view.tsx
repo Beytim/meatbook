@@ -25,12 +25,14 @@ import {
 } from "@/components/app/primitives";
 import { AccountProviderSelect } from "@/components/app/account-provider-select";
 import { subAccountName, type PaymentMethod } from "@/lib/accounts";
+import { ANIMAL_TYPES, animalName, animalEmoji, animalTone } from "@/lib/animals";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface PurchaseItem {
   id?: string;
   productId?: string | null;
   name: string;
+  animalType?: string | null;
   kg: number;
   unitCost: number;
   total: number;
@@ -230,14 +232,24 @@ export function PurchasesView() {
 function PurchaseRow({ purchase: p }: { purchase: Purchase }) {
   const itemCount = p.items.length;
   const kg = p.items.reduce((s, i) => s + (Number(i.kg) || 0), 0);
+  // animal types in this purchase (for chips)
+  const animals = p.items
+    .map((i) => i.animalType)
+    .filter(Boolean) as string[];
+  const uniqueAnimals = Array.from(new Set(animals));
+  // primary animal emoji for the icon
+  const primaryAnimal = p.items.find((i) => i.animalType)?.animalType;
+
   return (
     <Card className="p-3.5 card-raised">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-500/15 text-red-400">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M19 12l-7 7-7-7" />
-            </svg>
+          <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg ring-1 ${primaryAnimal ? animalTone(primaryAnimal) : "bg-red-500/15 text-red-400 ring-red-500/20"}`}>
+            {primaryAnimal ? animalEmoji(primaryAnimal) : (
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14M19 12l-7 7-7-7" />
+              </svg>
+            )}
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{p.supplier || "—"}</p>
@@ -260,8 +272,15 @@ function PurchaseRow({ purchase: p }: { purchase: Purchase }) {
       </div>
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <Pill tone="bad">Money Out</Pill>
+        {uniqueAnimals.length > 0 ? (
+          uniqueAnimals.map((a) => (
+            <span key={a} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ${animalTone(a)}`}>
+              {animalEmoji(a)} {animalName(a)}
+            </span>
+          ))
+        ) : null}
         <span className="text-[11px] text-muted-foreground">
-          {itemCount} {itemCount === 1 ? "item" : "items"} · <Kg kg={kg} />
+          {itemCount} {itemCount === 1 ? "animal" : "animals"} · <Kg kg={kg} />
         </span>
       </div>
     </Card>
@@ -272,9 +291,10 @@ function PurchaseRow({ purchase: p }: { purchase: Purchase }) {
 interface RowItem {
   key: string;
   productId: string | null;
+  animalType: string; // OX | SHEEP | GOAT
   name: string;
   kg: string;
-  unitCost: string;
+  amount: string; // manually-entered total paid (NOT auto-calculated)
 }
 
 function RecordPurchaseDialog({
@@ -318,36 +338,29 @@ function RecordPurchaseDialog({
     setRows((rs) => [...rs, emptyRow()]);
   }
 
-  // computed totals per row + grand total
+  // computed totals per row + grand total (amount is manually entered, NOT auto-calc)
   const computed = rows.map((r) => {
     const kg = parseFloat(r.kg) || 0;
-    const unitCost = parseFloat(r.unitCost) || 0;
-    return { key: r.key, total: Math.round(kg * unitCost * 100) / 100, hasContent: !!(r.name.trim() && (kg > 0 || unitCost > 0)) };
+    const amount = parseFloat(r.amount) || 0;
+    const perKg = kg > 0 ? amount / kg : 0; // derived, for display only
+    return { key: r.key, amount, perKg, hasContent: !!(r.animalType && kg > 0 && amount > 0) };
   });
-  const grandTotal = computed.reduce((s, c) => s + c.total, 0);
+  const grandTotal = computed.reduce((s, c) => s + c.amount, 0);
   const hasValidItem = computed.some((c) => c.hasContent);
   const canSave = hasValidItem;
 
   const save = useMutation({
     mutationFn: async () => {
       const items = rows
-        .filter((r) => r.name.trim())
+        .filter((r) => (parseFloat(r.kg) || 0) > 0 && (parseFloat(r.amount) || 0) > 0)
         .map((r) => {
           const kg = parseFloat(r.kg) || 0;
-          const unitCost = parseFloat(r.unitCost) || 0;
-          const total = Math.round(kg * unitCost * 100) / 100;
-          // try to match a product by name (case-insensitive) if no explicit productId
-          let productId = r.productId;
-          if (!productId && r.name.trim()) {
-            const match = products.find((p) => p.name.toLowerCase() === r.name.trim().toLowerCase());
-            if (match) productId = match.id;
-          }
+          const amount = parseFloat(r.amount) || 0;
           return {
-            productId: productId || undefined,
-            name: r.name.trim(),
+            animalType: r.animalType,
+            name: r.animalType || r.name.trim() || "Item",
             kg,
-            unitCost,
-            total,
+            amount,
           };
         });
       const r = await fetch("/api/meat/purchases", {
@@ -432,61 +445,75 @@ function RecordPurchaseDialog({
 
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Items</Label>
-              <span className="text-[11px] text-muted-foreground">kg × unit cost</span>
+              <Label className="text-xs">Animals purchased</Label>
+              <span className="text-[11px] text-muted-foreground">type · weight · amount</span>
             </div>
             <div className="mt-1.5 space-y-2.5">
-              {rows.map((r, idx) => {
+              {rows.map((r) => {
                 const c = computed.find((x) => x.key === r.key)!;
                 return (
                   <div key={r.key} className="rounded-xl border border-border/70 bg-card/40 p-2.5">
+                    {/* Animal type selector — Ox / Sheep / Goat */}
                     <div className="flex items-center gap-2">
-                      <Input
-                        value={r.name}
-                        onChange={(e) => updateRow(r.key, { name: e.target.value, productId: null })}
-                        placeholder={`Product #${idx + 1} (or type a name)`}
-                        list="purchase-products"
-                        className="h-9 flex-1 text-sm"
-                      />
+                      <div className="flex flex-1 gap-1.5">
+                        {ANIMAL_TYPES.map((a) => (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => updateRow(r.key, { animalType: a.id, name: a.name })}
+                            className={cn(
+                              "flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-xs font-semibold tap-scale",
+                              r.animalType === a.id
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted/60 text-muted-foreground"
+                            )}
+                          >
+                            <span className="text-base">{a.emoji}</span>
+                            {a.short}
+                          </button>
+                        ))}
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeRow(r.key)}
                         className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted/60 text-muted-foreground hover:bg-red-500/15 hover:text-red-400 tap-scale"
-                        aria-label="Remove item"
+                        aria-label="Remove animal"
                       >
                         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M18 6 6 18M6 6l12 12" />
                         </svg>
                       </button>
                     </div>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
+                    {/* Weight + Amount (manual entry) */}
+                    <div className="mt-2 grid grid-cols-2 gap-2">
                       <div>
-                        <Label className="text-[10px] text-muted-foreground">Kg</Label>
+                        <Label className="text-[10px] text-muted-foreground">Weight (kg)</Label>
                         <Input
                           value={r.kg}
                           onChange={(e) => updateRow(r.key, { kg: e.target.value })}
                           inputMode="decimal"
-                          placeholder="0.00"
+                          placeholder="e.g. 180"
                           className="h-9 tnum text-sm"
                         />
                       </div>
                       <div>
-                        <Label className="text-[10px] text-muted-foreground">Unit Br</Label>
+                        <Label className="text-[10px] text-muted-foreground">Amount paid (Br)</Label>
                         <Input
-                          value={r.unitCost}
-                          onChange={(e) => updateRow(r.key, { unitCost: e.target.value })}
+                          value={r.amount}
+                          onChange={(e) => updateRow(r.key, { amount: e.target.value })}
                           inputMode="decimal"
-                          placeholder="0.00"
+                          placeholder="e.g. 54000"
                           className="h-9 tnum text-sm"
                         />
-                      </div>
-                      <div>
-                        <Label className="text-[10px] text-muted-foreground">Total</Label>
-                        <div className="flex h-9 items-center rounded-md border border-border/60 bg-muted/40 px-2.5 text-sm font-semibold tnum">
-                          {formatBirr(c.total)}
-                        </div>
                       </div>
                     </div>
+                    {/* Derived per-kg cost (display only) */}
+                    {c.perKg > 0 && (
+                      <div className="mt-1.5 flex items-center justify-between rounded-md bg-muted/30 px-2 py-1 text-[10px] text-muted-foreground">
+                        <span>Negotiated price</span>
+                        <span className="tnum font-medium">{formatBirr(c.perKg)} / kg</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -500,7 +527,7 @@ function RecordPurchaseDialog({
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              Add item
+              Add another animal
             </button>
           </div>
 
@@ -538,5 +565,5 @@ function RecordPurchaseDialog({
 }
 
 function emptyRow(): RowItem {
-  return { key: Math.random().toString(36).slice(2), productId: null, name: "", kg: "", unitCost: "" };
+  return { key: Math.random().toString(36).slice(2), productId: null, animalType: "OX", name: "", kg: "", amount: "" };
 }

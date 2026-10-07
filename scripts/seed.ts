@@ -65,22 +65,50 @@ async function main() {
     ],
   });
 
-  await db.purchase.create({
-    data: {
-      supplier: "Kera Slaughterhouse",
-      note: "Morning stock — beef",
-      paymentMethod: "BANK",
-      paymentDetail: "CBE",
-      total: 12000,
-      userName: "Abebe Owner",
-      items: {
-        create: [
-          { name: "Meat (carcass)", kg: 10, unitCost: 1100, total: 11000 },
-          { name: "Ribs (offal)", kg: 2, unitCost: 500, total: 1000 },
-        ],
+  // Realistic whole-animal purchases. A butcher buys ox/sheep/goat by weight at
+  // a negotiated price (amount entered manually, NOT kg × unitCost).
+  // One purchase is dated TODAY so the dashboard stock-flow card has data.
+  const today = new Date();
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+
+  async function makePurchase(date: Date, supplier: string, method: string, detail: string | null, items: { animalType: string; name: string; kg: number; total: number }[]) {
+    const total = items.reduce((s, i) => s + i.total, 0);
+    await db.purchase.create({
+      data: {
+        supplier,
+        note: `Whole-animal purchase`,
+        paymentMethod: method,
+        paymentDetail: detail,
+        total,
+        userName: "Abebe Owner",
+        createdAt: date,
+        items: {
+          create: items.map((i) => ({
+            animalType: i.animalType,
+            name: i.name,
+            kg: i.kg,
+            unitCost: Math.round((i.total / i.kg) * 100) / 100, // derived, for display
+            total: i.total,
+          })),
+        },
       },
-    },
-  });
+    });
+  }
+
+  // TODAY: 1 ox @ 180kg @ Br 54,000 (so dashboard shows today's purchase vs sales)
+  await makePurchase(today, "Kera Slaughterhouse", "BANK", "CBE", [
+    { animalType: "OX", name: "Ox", kg: 180, total: 54000 },
+  ]);
+  // Yesterday: 1 ox @ 160kg @ Br 48,000 + 2 sheep @ 25kg @ Br 5,000 each
+  await makePurchase(yesterday, "Kera Slaughterhouse", "BANK", "CBE", [
+    { animalType: "OX", name: "Ox", kg: 160, total: 48000 },
+    { animalType: "SHEEP", name: "Sheep", kg: 50, total: 10000 },
+  ]);
+  // 3 days ago: 1 goat @ 22kg @ Br 4,400
+  const d3 = new Date(); d3.setDate(d3.getDate() - 3);
+  await makePurchase(d3, "Addis Ababa Livestock Market", "MOBILE", "Telebirr", [
+    { animalType: "GOAT", name: "Goat", kg: 22, total: 4400 },
+  ]);
 
   const types = ["TAKE_HOME", "EAT_HERE"];
   // Sales: spread across banks/mobile providers so the breakdown is rich.

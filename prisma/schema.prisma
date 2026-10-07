@@ -94,9 +94,15 @@ model PurchaseItem {
   productId   String?
   product     Product? @relation(fields: [productId], references: [id])
   name        String
+  // Animal type for whole-animal purchases: OX | SHEEP | GOAT (nullable for legacy/supply items)
+  animalType  String?
   kg          Float    @default(0)
-  unitCost    Float    @default(0)
+  unitCost    Float    @default(0) // derived: amount / kg (for display only)
+  // Manually-entered total amount paid for this line (NOT auto-calculated).
+  // The owner negotiates a price per animal, enters it directly.
   total       Float    @default(0)
+
+  @@index([animalType])
 }
 
 // ─── Wastage (no inventory deduction) ─────────────────────────────────

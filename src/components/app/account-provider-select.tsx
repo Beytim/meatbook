@@ -8,21 +8,21 @@ import {
 
 // A compact dropdown for choosing the sub-account (Telebirr/M-Pesa/CBE/United/Zemen…)
 // based on the selected payment method. For CASH it's hidden.
+// Auto-detects whether to open up or down based on available space — important
+// inside bottom drawers where there's no room below.
 export function AccountProviderSelect({
   method,
   value,
   onChange,
   className,
-  compact = false,
 }: {
   method: PaymentMethod;
   value: string;
   onChange: (v: string) => void;
   className?: string;
-  compact?: boolean;
 }) {
-  // For cash there are no sub-accounts to pick.
   const [open, setOpen] = React.useState(false);
+  const [dropUp, setDropUp] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -32,6 +32,15 @@ export function AccountProviderSelect({
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  // Measure available space and decide direction.
+  React.useEffect(() => {
+    if (!open || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    // Need ~260px for the dropdown; if not enough below, open upward.
+    setDropUp(spaceBelow < 280);
   }, [open]);
 
   if (method === "CASH") return null;
@@ -62,10 +71,15 @@ export function AccountProviderSelect({
             </>
           )}
         </span>
-        <svg viewBox="0 0 24 24" className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+        <svg viewBox="0 0 24 24" className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", open && (dropUp ? "rotate-180" : "rotate-180"))} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {open && (
-        <div className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-border/70 bg-popover p-1 shadow-2xl mb-scroll">
+        <div
+          className={cn(
+            "absolute z-[100] max-h-64 w-full overflow-y-auto rounded-xl border border-border/70 bg-popover p-1 shadow-2xl mb-scroll",
+            dropUp ? "bottom-full mb-1" : "top-full mt-1"
+          )}
+        >
           {options.map((o) => (
             <button
               key={o.id}

@@ -96,10 +96,13 @@ export function HomeView() {
         </div>
       </Card>
 
-      {/* Money — where it is (tree breakdown by sub-account) */}
+      {/* Money — sales by media (tree breakdown by sub-account) */}
       <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="text-base font-semibold tracking-tight">Money — where it is</h2>
-        <button onClick={() => go("MONEY")} className="text-xs font-medium text-primary">Open Money →</button>
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">Money from sales — by media</h2>
+          <p className="text-[11px] text-muted-foreground">Total received through each channel. Balances &amp; money-out are in Money.</p>
+        </div>
+        <button onClick={() => go("MONEY")} className="shrink-0 text-xs font-medium text-primary">Open Money →</button>
       </div>
       <div className="mb-5 space-y-2.5">
         <AccountTreeCard method="CASH" label="Cash" tree={data.tree.CASH} currency={cur} tone="emerald" defaultOpen />

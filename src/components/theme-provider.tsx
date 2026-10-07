@@ -17,14 +17,17 @@ const ThemeContext = React.createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // MeatBook is always dark (Charcoal + Meat Red). We still expose setTheme
+  // for the Settings toggle, but default to dark and clear any stale light
+  // preference on mount.
   const [theme, setThemeState] = React.useState<Theme>("dark");
 
   React.useEffect(() => {
-    const stored = (typeof window !== "undefined" &&
-      (localStorage.getItem("mb-theme") as Theme | null)) as Theme | null;
-    const initial = stored ?? "dark";
-    setThemeState(initial);
-    applyTheme(initial);
+    // Force dark on mount — clear any stale light preference.
+    applyTheme("dark");
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mb-theme", "dark");
+    }
   }, []);
 
   const setTheme = React.useCallback((t: Theme) => {

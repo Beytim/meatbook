@@ -115,8 +115,8 @@ export function HomeView() {
         </div>
       </Card>
 
-      {/* ─── Purchase Recovery + Net Result (side by side on desktop, stacked on mobile) ─── */}
-      <div className="mb-3 mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      {/* ─── Purchase Recovery + Net Result (compact, side by side) ─── */}
+      <div className="mb-2 mt-3 grid grid-cols-2 gap-2">
         <PurchaseRecoveryCard
           sales={data.flow.todayRevenue}
           purchaseCost={data.flow.purchaseAmount}
@@ -130,8 +130,8 @@ export function HomeView() {
         />
       </div>
 
-      {/* ─── Sold Today + Bought Today (operational kg info, separate from recovery) ─── */}
-      <div className="mb-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      {/* ─── Sold Today + Bought Today (compact, side by side) ─── */}
+      <div className="mb-3 grid grid-cols-2 gap-2">
         <SoldTodayCard kgSold={data.flow.todayKgSold} kgBought={data.flow.purchaseKg} />
         <BoughtTodayCard kgBought={data.flow.purchaseKg} kgSold={data.flow.todayKgSold} />
       </div>
@@ -223,7 +223,7 @@ function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; pur
   // No purchases today → nothing to recover. Show a neutral state.
   if (purchaseCost <= 0) {
     return (
-      <Card className="card-raised p-3">
+      <Card className="card-raised bg-card p-2.5">
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Purchase Recovery</p>
         <p className="mt-1.5 text-2xl font-bold tnum text-muted-foreground">—</p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">No purchases today</p>
@@ -245,11 +245,11 @@ function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; pur
   const color = isBreakEven ? "#2563EB" : isAbove ? "#16803C" : "#C53030";
 
   return (
-    <Card className="card-raised p-3">
+    <Card className="card-raised bg-card p-2.5">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Purchase Recovery</p>
 
       {/* Main percentage in status color */}
-      <p className="mt-1.5 text-2xl font-bold tnum leading-none" style={{ color }}>
+      <p className="mt-1 text-xl font-bold tnum leading-none" style={{ color }}>
         {pct.toFixed(1)}%
       </p>
 
@@ -301,11 +301,11 @@ function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; 
   const label = isZero ? "Break Even" : isPositive ? "Money Made" : "Money Lost";
 
   return (
-    <Card className="card-raised p-3">
+    <Card className="card-raised bg-card p-2.5">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Net Result</p>
 
       {/* Net result amount in status color */}
-      <p className="mt-1.5 text-2xl font-bold tnum leading-none" style={{ color }}>
+      <p className="mt-1 text-xl font-bold tnum leading-none" style={{ color }}>
         {net < 0 ? "−" : ""}{formatBirr(Math.abs(net), cur)}
       </p>
 
@@ -335,9 +335,9 @@ function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; 
 function SoldTodayCard({ kgSold, kgBought }: { kgSold: number; kgBought: number }) {
   const pctSold = kgBought > 0 ? Math.round((kgSold / kgBought) * 100) : null;
   return (
-    <Card className="card-raised p-3">
+    <Card className="card-raised bg-card p-2.5">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Sold Today</p>
-      <p className="mt-1.5 text-xl font-bold tnum leading-none">{formatKg(kgSold)}</p>
+      <p className="mt-1 text-lg font-bold tnum leading-none">{formatKg(kgSold)}</p>
       <p className="mt-1.5 text-[11px] text-muted-foreground tnum">
         {pctSold !== null ? `${pctSold}% sold` : "—"}
       </p>
@@ -355,9 +355,9 @@ function SoldTodayCard({ kgSold, kgBought }: { kgSold: number; kgBought: number 
 function BoughtTodayCard({ kgBought, kgSold }: { kgBought: number; kgSold: number }) {
   const remaining = Math.max(0, Math.round((kgBought - kgSold) * 100) / 100);
   return (
-    <Card className="card-raised p-3">
+    <Card className="card-raised bg-card p-2.5">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Bought Today</p>
-      <p className="mt-1.5 text-xl font-bold tnum leading-none">{formatKg(kgBought)}</p>
+      <p className="mt-1 text-lg font-bold tnum leading-none">{formatKg(kgBought)}</p>
       <p className="mt-1.5 text-[11px] text-muted-foreground tnum">
         {kgBought > 0 ? `${formatKg(remaining)} left` : "—"}
       </p>

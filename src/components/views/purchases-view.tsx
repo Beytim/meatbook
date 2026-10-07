@@ -14,11 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
-} from "@/components/ui/select";
 import {
   PeriodTabs, SearchInput, EmptyState, StatTile, Pill,
   PageScaffold, ListSkeleton, Money, Kg,
@@ -393,6 +390,7 @@ function RecordPurchaseDialog({
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Record Purchase</DialogTitle>
+          <DialogDescription className="sr-only">Record a whole-animal purchase (ox, sheep, or goat) with weight and negotiated amount.</DialogDescription>
         </DialogHeader>
 
         <datalist id="purchase-products">

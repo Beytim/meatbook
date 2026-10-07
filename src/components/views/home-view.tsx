@@ -79,38 +79,36 @@ export function HomeView() {
         } />
       </div>
 
-      {/* Today's sales hero */}
-      <Card className="mb-4 overflow-hidden card-raised">
-        <div className="relative bg-gradient-to-br from-primary/15 via-card to-card p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Today&apos;s Sales</p>
-              <p className="mt-1 text-3xl font-bold tnum tracking-tight">{formatBirr(today.revenue, cur)}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {today.salesCount} {today.salesCount === 1 ? "sale" : "sales"} · {formatKg(today.kgSold)} sold
-              </p>
-            </div>
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/20 text-primary ring-1 ring-primary/30">
-              <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v4h-4" /></svg>
-            </div>
+      {/* Today's sales — compact */}
+      <Card className="mb-3 overflow-hidden card-raised">
+        <div className="flex items-center justify-between bg-gradient-to-br from-primary/12 via-card to-card p-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Today&apos;s Sales</p>
+            <p className="mt-0.5 text-2xl font-bold tnum tracking-tight">{formatBirr(today.revenue, cur)}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {today.salesCount} {today.salesCount === 1 ? "sale" : "sales"} · {formatKg(today.kgSold)}
+            </p>
+          </div>
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/20 text-primary ring-1 ring-primary/30">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8" /><path d="M21 7v4h-4" /></svg>
           </div>
         </div>
         <div className="grid grid-cols-2 divide-x divide-border/60">
-          <div className="p-4">
+          <div className="p-2.5">
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Take Home</p>
             </div>
-            <p className="mt-1 text-lg font-bold tnum">{formatBirr(today.takeHome.revenue, cur)}</p>
-            <p className="text-[11px] text-muted-foreground">{today.takeHome.count} sales · {formatKg(today.takeHome.kg)}</p>
+            <p className="mt-0.5 text-sm font-bold tnum">{formatBirr(today.takeHome.revenue, cur)}</p>
+            <p className="text-[10px] text-muted-foreground">{today.takeHome.count} · {formatKg(today.takeHome.kg)}</p>
           </div>
-          <div className="p-4">
+          <div className="p-2.5">
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Eat Here</p>
             </div>
-            <p className="mt-1 text-lg font-bold tnum">{formatBirr(today.eatHere.revenue, cur)}</p>
-            <p className="text-[11px] text-muted-foreground">{today.eatHere.count} sales · {formatKg(today.eatHere.kg)}</p>
+            <p className="mt-0.5 text-sm font-bold tnum">{formatBirr(today.eatHere.revenue, cur)}</p>
+            <p className="text-[10px] text-muted-foreground">{today.eatHere.count} · {formatKg(today.eatHere.kg)}</p>
           </div>
         </div>
       </Card>

@@ -223,7 +223,7 @@ function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; pur
   // No purchases today → nothing to recover. Show a neutral state.
   if (purchaseCost <= 0) {
     return (
-      <Card className="bg-white p-4 ring-1 ring-border/60">
+      <Card className="card-raised p-4">
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Purchase Recovery</p>
         <p className="mt-2 text-3xl font-bold tnum text-muted-foreground">—</p>
         <p className="mt-1 text-[11px] text-muted-foreground">No purchases today</p>
@@ -245,7 +245,7 @@ function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; pur
   const color = isBreakEven ? "#2563EB" : isAbove ? "#16803C" : "#C53030";
 
   return (
-    <Card className="bg-white p-4 ring-1 ring-border/60">
+    <Card className="card-raised p-4">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Purchase Recovery</p>
 
       {/* Main percentage in status color */}
@@ -274,7 +274,7 @@ function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; pur
       )}
 
       {/* Recovery bar (0–200% scale, break-even marker at 50% = 100%) */}
-      <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-stone-200">
+      <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-muted/60">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${Math.min(100, (pct / 200) * 100)}%`, backgroundColor: color }}
@@ -301,7 +301,7 @@ function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; 
   const label = isZero ? "Break Even" : isPositive ? "Money Made" : "Money Lost";
 
   return (
-    <Card className="bg-white p-4 ring-1 ring-border/60">
+    <Card className="card-raised p-4">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Net Result</p>
 
       {/* Net result amount in status color */}
@@ -335,7 +335,7 @@ function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; 
 function SoldTodayCard({ kgSold, kgBought }: { kgSold: number; kgBought: number }) {
   const pctSold = kgBought > 0 ? Math.round((kgSold / kgBought) * 100) : null;
   return (
-    <Card className="bg-white p-4 ring-1 ring-border/60">
+    <Card className="card-raised p-4">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Sold Today</p>
       <p className="mt-2 text-2xl font-bold tnum leading-none">{formatKg(kgSold)}</p>
       <p className="mt-2 text-[11px] text-muted-foreground tnum">
@@ -355,7 +355,7 @@ function SoldTodayCard({ kgSold, kgBought }: { kgSold: number; kgBought: number 
 function BoughtTodayCard({ kgBought, kgSold }: { kgBought: number; kgSold: number }) {
   const remaining = Math.max(0, Math.round((kgBought - kgSold) * 100) / 100);
   return (
-    <Card className="bg-white p-4 ring-1 ring-border/60">
+    <Card className="card-raised p-4">
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Bought Today</p>
       <p className="mt-2 text-2xl font-bold tnum leading-none">{formatKg(kgBought)}</p>
       <p className="mt-2 text-[11px] text-muted-foreground tnum">

@@ -13,11 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   EmptyState, Pill, PageScaffold, ListSkeleton, Money,
 } from "@/components/app/primitives";
+import { AccountProviderSelect } from "@/components/app/account-provider-select";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface CashSession {
@@ -377,15 +378,44 @@ function CloseDrawerDialog({
   expected: number;
   onSuccess: (session: CashSession) => void;
 }) {
+  const qc = useQueryClient();
   const [counted, setCounted] = React.useState("");
   const [note, setNote] = React.useState("");
   const [userName, setUserName] = React.useState("");
+  const [transferEnabled, setTransferEnabled] = React.useState(false);
+  const [transferAmount, setTransferAmount] = React.useState("");
+  const [transferTo, setTransferTo] = React.useState<"MOBILE" | "BANK">("BANK");
+  const [transferDetail, setTransferDetail] = React.useState("");
 
   const countedN = parseFloat(counted) || 0;
   const diff = counted ? countedN - expected : 0;
+  const transferN = parseFloat(transferAmount) || 0;
 
   const mut = useMutation({
     mutationFn: async () => {
+      // If transfer is enabled, create a money move (OUT from CASH, IN to selected account)
+      if (transferEnabled && transferN > 0) {
+        await fetch("/api/meat/money", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            direction: "OUT", account: "CASH", amount: transferN,
+            reason: `Cash drawer transfer to ${transferTo}`,
+            userName: userName.trim() || "Abebe Owner",
+          }),
+        });
+        await fetch("/api/meat/money", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            direction: "IN", account: transferTo, detail: transferDetail || undefined,
+            amount: transferN,
+            reason: `Cash drawer transfer`,
+            userName: userName.trim() || "Abebe Owner",
+          }),
+        });
+      }
+      // Close the drawer
       const r = await fetch("/api/meat/cash/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -404,10 +434,15 @@ function CloseDrawerDialog({
     },
     onSuccess: (data) => {
       toast.success(diff === 0 ? "Drawer closed — balanced" : diff > 0 ? `Drawer closed — over by ${formatBirr(diff)}` : `Drawer closed — short by ${formatBirr(Math.abs(diff))}`);
+      if (transferEnabled && transferN > 0) {
+        toast.success(`${formatBirr(transferN)} transferred to ${transferTo}`);
+      }
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["money"] });
+      qc.invalidateQueries({ queryKey: ["cash-sessions"] });
       const session: CashSession = data.session;
-      setCounted("");
-      setNote("");
-      setUserName("");
+      setCounted(""); setNote(""); setUserName("");
+      setTransferEnabled(false); setTransferAmount(""); setTransferDetail("");
       onSuccess(session);
     },
     onError: (e: Error) => toast.error(e.message || "Could not close drawer"),
@@ -415,15 +450,12 @@ function CloseDrawerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Close Cash Drawer</DialogTitle>
+          <DialogDescription className="sr-only">Count cash, optionally transfer to bank or mobile, then close the drawer.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Count the cash in the drawer and enter the total below. The system will compute the expected amount from sales, expenses, refunds, and manual movements during this session.
-          </p>
-
           {/* Expected */}
           <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2.5">
             <span className="text-xs font-medium text-muted-foreground">Expected cash</span>
@@ -462,25 +494,50 @@ function CloseDrawerDialog({
             </div>
           )}
 
+          {/* Transfer option */}
+          <div className="rounded-lg border border-border/60 p-2.5">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={transferEnabled} onChange={(e) => setTransferEnabled(e.target.checked)} className="h-4 w-4 rounded accent-primary" />
+              <span className="text-xs font-semibold">Transfer cash to Bank or Mobile</span>
+            </label>
+            {transferEnabled && (
+              <div className="mt-2.5 space-y-2">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button type="button" onClick={() => { setTransferTo("BANK"); setTransferDetail(""); }}
+                    className={cn("rounded-lg py-2 text-xs font-semibold", transferTo === "BANK" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+                    🏦 Bank
+                  </button>
+                  <button type="button" onClick={() => { setTransferTo("MOBILE"); setTransferDetail(""); }}
+                    className={cn("rounded-lg py-2 text-xs font-semibold", transferTo === "MOBILE" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+                    📱 Mobile
+                  </button>
+                </div>
+                <div>
+                  <Label className="text-[10px]">Amount to transfer (Br)</Label>
+                  <Input value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} inputMode="decimal" placeholder="e.g. 20000" className="mt-0.5 h-9 tnum text-sm" />
+                  <div className="mt-1 flex gap-1.5">
+                    <button type="button" onClick={() => setTransferAmount(String(countedN || expected))} className="rounded-md bg-muted/60 px-2 py-1 text-[10px] font-semibold">Full amount</button>
+                    <button type="button" onClick={() => setTransferAmount(String(Math.round((countedN || expected) / 2)))} className="rounded-md bg-muted/60 px-2 py-1 text-[10px] font-semibold">Half</button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[10px]">{transferTo === "MOBILE" ? "Provider" : "Bank"}</Label>
+                  <div className="mt-0.5">
+                    <AccountProviderSelect method={transferTo} value={transferDetail} onChange={setTransferDetail} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <Label className="text-xs">Closed by (optional)</Label>
-            <Input
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              placeholder="Cashier name"
-              className="mt-1"
-            />
+            <Input value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Cashier name" className="mt-1" />
           </div>
 
           <div>
             <Label className="text-xs">Note (optional)</Label>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={2}
-              placeholder="e.g. shift handover notes"
-              className="mt-1"
-            />
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="e.g. shift handover notes" className="mt-1" />
           </div>
         </div>
 

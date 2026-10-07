@@ -20,18 +20,20 @@ export async function GET() {
   const todayWhere = { createdAt: { gte: today.from, lte: today.to }, status: "COMPLETED" };
   const todayRange = { createdAt: { gte: today.from, lte: today.to } };
 
-  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail, todayPurchases, todayExpensesAgg] = await Promise.all([
+  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail, todayPurchases, todayExpensesAgg, todayTopProducts, recentSales] = await Promise.all([
     db.sale.count({ where: todayWhere }),
     db.sale.aggregate({ where: todayWhere, _sum: { total: true, totalKg: true }, _count: true }),
     db.sale.aggregate({ where: { ...todayWhere, type: "TAKE_HOME" }, _sum: { total: true, totalKg: true }, _count: true }),
     db.sale.aggregate({ where: { ...todayWhere, type: "EAT_HERE" }, _sum: { total: true, totalKg: true }, _count: true }),
     db.sale.findFirst({ orderBy: { createdAt: "desc" }, select: { number: true } }),
     db.cashSession.findFirst({ where: { status: "OPEN" }, orderBy: { openedAt: "desc" } }),
-    // TODAY's sales grouped by method + sub-account detail — same data as Today's Sales.
     db.sale.groupBy({ by: ["paymentMethod", "paymentDetail"], where: todayWhere, _sum: { total: true } }),
-    // TODAY's purchases (whole animals) for the stock-flow card
     db.purchase.findMany({ where: todayRange, include: { items: true } }),
     db.expense.aggregate({ where: todayRange, _sum: { amount: true } }),
+    // Top products today (by revenue)
+    db.saleItem.groupBy({ by: ["name"], where: { sale: todayWhere }, _sum: { total: true, kg: true }, _count: true }),
+    // Recent sales (last 5)
+    db.sale.findMany({ where: todayWhere, orderBy: { createdAt: "desc" }, take: 5, include: { items: true } }),
   ]);
 
   // Build a tree per method from TODAY's sales only.
@@ -158,6 +160,23 @@ export async function GET() {
         perKg: v.kg > 0 ? Math.round((v.amount / v.kg) * 100) / 100 : 0,
       })).sort((a, b) => b.amount - a.amount),
     },
+    // Top products today (by revenue)
+    topProducts: todayTopProducts
+      .map((p) => ({ name: p.name, revenue: Number(p._sum.total ?? 0), kg: Number(p._sum.kg ?? 0), count: p._count }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5),
+    // Recent sales (last 5)
+    recentSales: recentSales.map((s) => ({
+      number: String(s.number).padStart(6, "0"),
+      type: s.type,
+      total: s.total,
+      totalKg: s.totalKg,
+      paymentMethod: s.paymentMethod,
+      paymentDetail: s.paymentDetail,
+      cashierName: s.cashierName,
+      itemCount: s.items.length,
+      createdAt: s.createdAt,
+    })),
     // integrity check: tree sum must equal today's revenue
     _sync: { todayRevenue, treeSum, matched: Math.abs(todayRevenue - treeSum) < 0.01 },
   });

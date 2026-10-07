@@ -40,6 +40,8 @@ interface DashboardData {
     totalKg: number;
     animalBreakdown: { type: string; kg: number; amount: number; count: number; perKg: number }[];
   };
+  topProducts: { name: string; revenue: number; kg: number; count: number }[];
+  recentSales: { number: string; type: string; total: number; totalKg: number; paymentMethod: string; paymentDetail: string | null; cashierName: string | null; itemCount: number; createdAt: string }[];
 }
 
 async function fetchDashboard(): Promise<DashboardData> {
@@ -135,16 +137,26 @@ export function HomeView() {
         <TodayPurchasesCard purchases={data.todayPurchases} cur={cur} onOpen={() => go("PURCHASES")} />
       )}
 
-      {/* ─── Sales by Media — shortened heading ─── */}
+      {/* ─── Cash · Mobile · Bank ─── */}
       <div className="mb-2 mt-4 flex items-center justify-between px-1">
-        <h2 className="text-sm font-semibold tracking-tight">Sales by Media</h2>
+        <h2 className="text-sm font-semibold tracking-tight">Cash · Mobile · Bank</h2>
         <button onClick={() => go("MONEY")} className="shrink-0 text-xs font-medium text-primary">Money →</button>
       </div>
-      <div className="mb-5 space-y-2.5">
+      <div className="mb-4 space-y-2">
         <AccountTreeCard method="CASH" label="Cash" tree={data.tree.CASH} currency={cur} tone="emerald" defaultOpen />
         <AccountTreeCard method="MOBILE" label="Mobile Money" tree={data.tree.MOBILE} currency={cur} tone="sky" defaultOpen />
         <AccountTreeCard method="BANK" label="Bank" tree={data.tree.BANK} currency={cur} tone="violet" defaultOpen />
       </div>
+
+      {/* ─── Top Products Today ─── */}
+      {data.topProducts.length > 0 && (
+        <TopProductsCard products={data.topProducts} cur={cur} />
+      )}
+
+      {/* ─── Recent Activity ─── */}
+      {data.recentSales.length > 0 && (
+        <RecentActivityCard sales={data.recentSales} cur={cur} />
+      )}
 
       {/* Cash session */}
       {data.openSession && (
@@ -352,6 +364,72 @@ function TodayPurchasesCard({ purchases, cur, onOpen }: {
               </p>
             </div>
             <p className="shrink-0 text-sm font-bold tnum text-amber-400">−{formatBirr(a.amount, cur)}</p>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// TOP PRODUCTS — which meats are driving today's revenue
+// ════════════════════════════════════════════════════════════════════════
+function TopProductsCard({ products, cur }: { products: DashboardData["topProducts"]; cur: string }) {
+  const maxRevenue = Math.max(...products.map((p) => p.revenue), 1);
+  return (
+    <Card className="mb-3 card-raised bg-card p-3.5">
+      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Top Products Today</p>
+      <div className="space-y-2">
+        {products.map((p, i) => (
+          <div key={p.name} className="flex items-center gap-2.5">
+            <span className="w-4 text-right text-[11px] font-bold tnum text-muted-foreground">{i + 1}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <p className="truncate text-xs font-semibold">{p.name}</p>
+                <p className="shrink-0 text-xs font-bold tnum">{formatBirr(p.revenue, cur)}</p>
+              </div>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/60">
+                  <div className="h-full rounded-full bg-primary/60" style={{ width: `${(p.revenue / maxRevenue) * 100}%` }} />
+                </div>
+                <span className="shrink-0 text-[10px] text-muted-foreground tnum">{p.count}× · {formatKg(p.kg)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// RECENT ACTIVITY — last 5 sales today
+// ════════════════════════════════════════════════════════════════════════
+function RecentActivityCard({ sales, cur }: { sales: DashboardData["recentSales"]; cur: string }) {
+  return (
+    <Card className="mb-3 card-raised bg-card p-3.5">
+      <div className="mb-2.5 flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Recent Activity</p>
+        <button onClick={() => useNav.getState().go("SALES_HISTORY")} className="text-[10px] font-medium text-primary">All →</button>
+      </div>
+      <div className="space-y-1.5">
+        {sales.map((s) => (
+          <div key={s.number} className="flex items-center gap-2.5 rounded-lg bg-muted/20 px-2.5 py-2">
+            <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${s.type === "TAKE_HOME" ? "bg-amber-500/15 text-amber-400" : "bg-emerald-500/15 text-emerald-400"}`}>
+              <span className="text-[9px] font-bold">{s.type === "TAKE_HOME" ? "OUT" : "IN"}</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold tnum">#{s.number}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {s.itemCount} item{s.itemCount > 1 ? "s" : ""} · {formatKg(s.totalKg)} · {s.cashierName || "—"}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-xs font-bold tnum text-emerald-400">+{formatBirr(s.total, cur)}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {s.paymentMethod === "CASH" ? "Cash" : s.paymentMethod === "MOBILE" ? "Mobile" : "Bank"}
+              </p>
+            </div>
           </div>
         ))}
       </div>

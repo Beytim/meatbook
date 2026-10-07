@@ -79,19 +79,38 @@ export function HomeView() {
         } />
       </div>
 
-      {/* Today's sales — ultra compact single card */}
+      {/* Today's sales — header + Take Home / Eat Here rows */}
       <Card className="mb-2 overflow-hidden card-raised bg-card">
-        <div className="flex items-center justify-between bg-gradient-to-br from-primary/12 via-card to-card p-2.5">
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Today&apos;s Sales</p>
-            <p className="text-xl font-bold tnum tracking-tight leading-tight">{formatBirr(today.revenue, cur)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[9px] text-muted-foreground tnum">{today.salesCount} sales · {formatKg(today.kgSold)}</p>
-            <div className="mt-0.5 flex items-center justify-end gap-2 text-[10px] tnum">
-              <span className="text-amber-400">● {formatBirr(today.takeHome.revenue, cur)}</span>
-              <span className="text-emerald-400">● {formatBirr(today.eatHere.revenue, cur)}</span>
+        <div className="bg-gradient-to-br from-primary/12 via-card to-card p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Today&apos;s Sales</p>
+              <p className="text-2xl font-bold tnum tracking-tight leading-tight">{formatBirr(today.revenue, cur)}</p>
             </div>
+            <div className="text-right">
+              <p className="text-[11px] text-muted-foreground tnum">{today.salesCount} {today.salesCount === 1 ? "sale" : "sales"}</p>
+              <p className="text-[11px] text-muted-foreground tnum">{formatKg(today.kgSold)} sold</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-border/60">
+          <div className="p-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-amber-400" />
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Take Home</p>
+              <span className="ml-auto text-[10px] text-muted-foreground tnum">{today.takeHome.count}</span>
+            </div>
+            <p className="mt-0.5 text-sm font-bold tnum text-amber-400">{formatBirr(today.takeHome.revenue, cur)}</p>
+            <p className="text-[10px] text-muted-foreground tnum">{formatKg(today.takeHome.kg)}</p>
+          </div>
+          <div className="p-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Eat Here</p>
+              <span className="ml-auto text-[10px] text-muted-foreground tnum">{today.eatHere.count}</span>
+            </div>
+            <p className="mt-0.5 text-sm font-bold tnum text-emerald-400">{formatBirr(today.eatHere.revenue, cur)}</p>
+            <p className="text-[10px] text-muted-foreground tnum">{formatKg(today.eatHere.kg)}</p>
           </div>
         </div>
       </Card>

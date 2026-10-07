@@ -113,13 +113,17 @@ export function HomeView() {
         </div>
       </Card>
 
-      {/* ─── Recovery + Net Result — side by side ─── */}
-      <div className="mb-3 grid grid-cols-2 gap-2.5">
+      {/* ─── Recovery — full width, clear labels ─── */}
+      <div className="mb-3">
         <PurchaseRecoveryCard sales={data.flow.todayRevenue} purchaseCost={data.flow.purchaseAmount} cur={cur} />
+      </div>
+
+      {/* ─── Net Result — full width, clear labels ─── */}
+      <div className="mb-3">
         <NetResultCard sales={data.flow.todayRevenue} purchaseCost={data.flow.purchaseAmount} expenses={data.flow.todayExpenses} cur={cur} />
       </div>
 
-      {/* ─── Stock Flow — single unified card (no redundancy) ─── */}
+      {/* ─── Stock Flow — single unified card ─── */}
       <StockFlowCard
         kgSold={data.flow.todayKgSold}
         kgBought={data.flow.purchaseKg}
@@ -131,13 +135,10 @@ export function HomeView() {
         <TodayPurchasesCard purchases={data.todayPurchases} cur={cur} onOpen={() => go("PURCHASES")} />
       )}
 
-      {/* Today's sales by media — same source as Today's Sales card above */}
+      {/* ─── Sales by Media — shortened heading ─── */}
       <div className="mb-2 mt-4 flex items-center justify-between px-1">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight">Today&apos;s sales — by media</h2>
-          <p className="text-[11px] text-muted-foreground">Where today&apos;s revenue came from. All-time balances are in Money.</p>
-        </div>
-        <button onClick={() => go("MONEY")} className="shrink-0 text-xs font-medium text-primary">Open Money →</button>
+        <h2 className="text-sm font-semibold tracking-tight">Sales by Media</h2>
+        <button onClick={() => go("MONEY")} className="shrink-0 text-xs font-medium text-primary">Money →</button>
       </div>
       <div className="mb-5 space-y-2.5">
         <AccountTreeCard method="CASH" label="Cash" tree={data.tree.CASH} currency={cur} tone="emerald" defaultOpen />
@@ -204,15 +205,15 @@ function QuickAction({ label, icon, onClick, tone }: { label: string; icon: Reac
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// PURCHASE RECOVERY — % of purchase cost recovered by sales
+// PURCHASE RECOVERY — full width, clear context
 // ════════════════════════════════════════════════════════════════════════
 function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; purchaseCost: number; cur: string }) {
   if (purchaseCost <= 0) {
     return (
-      <Card className="card-raised bg-card p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Recovery</p>
-        <p className="mt-1 text-lg font-bold tnum text-muted-foreground">—</p>
-        <p className="text-[10px] text-muted-foreground">No purchases</p>
+      <Card className="card-raised bg-card p-3.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Purchase Recovery</p>
+        <p className="mt-1.5 text-xl font-bold tnum text-muted-foreground">—</p>
+        <p className="text-[11px] text-muted-foreground">No purchases today</p>
       </Card>
     );
   }
@@ -222,38 +223,57 @@ function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; pur
   const isAbove = diff > 0;
   const color = isBreakEven ? "#2563EB" : isAbove ? "#16803C" : "#C53030";
   return (
-    <Card className="card-raised bg-card p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Recovery</p>
-      <p className="mt-1 text-lg font-bold tnum leading-none" style={{ color }}>{pct.toFixed(1)}%</p>
-      <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-muted/60">
+    <Card className="card-raised bg-card p-3.5">
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Purchase Recovery</p>
+          <p className="mt-0.5 text-xl font-bold tnum leading-none" style={{ color }}>{pct.toFixed(1)}%</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">of purchase cost recovered by sales</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] text-muted-foreground tnum">{formatBirr(sales, cur)} in</p>
+          <p className="text-[11px] text-muted-foreground tnum">{formatBirr(purchaseCost, cur)} spent</p>
+        </div>
+      </div>
+      <div className="relative mt-2.5 h-2 overflow-hidden rounded-full bg-muted/60">
         <div className="h-full rounded-full" style={{ width: `${Math.min(100, (pct / 200) * 100)}%`, backgroundColor: color }} />
         <div className="absolute left-1/2 top-0 h-full w-px bg-foreground/40" />
       </div>
-      <p className="mt-1.5 text-[10px] font-medium tnum" style={{ color }}>
-        {isBreakEven ? "Cost recovered" : isAbove ? `+${formatBirr(diff, cur)}` : `−${formatBirr(Math.abs(diff), cur)}`}
+      <p className="mt-2 text-[11px] font-medium" style={{ color }}>
+        {isBreakEven
+          ? "✓ Purchase cost fully recovered"
+          : isAbove
+          ? `+${formatBirr(diff, cur)} above purchase cost`
+          : `−${formatBirr(Math.abs(diff), cur)} still needed to cover purchases`}
       </p>
     </Card>
   );
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// NET RESULT — Sales − Purchase − Expenses
+// NET RESULT — full width, clear context
 // ════════════════════════════════════════════════════════════════════════
 function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; purchaseCost: number; expenses: number; cur: string }) {
   const net = Math.round((sales - purchaseCost - expenses) * 100) / 100;
   const isZero = Math.abs(net) < 0.005;
   const isPositive = net > 0;
   const color = isZero ? "#2563EB" : isPositive ? "#16803C" : "#C53030";
+  const label = isZero ? "Break Even" : isPositive ? "Profit" : "Loss";
   return (
-    <Card className="card-raised bg-card p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Net Result</p>
-      <p className="mt-1 text-lg font-bold tnum leading-none" style={{ color }}>
-        {net < 0 ? "−" : isPositive ? "+" : ""}{formatBirr(Math.abs(net), cur)}
-      </p>
-      <div className="mt-2 space-y-0.5 text-[10px] tnum text-muted-foreground">
-        <p>+ {formatBirr(sales, cur)}</p>
-        <p>− {formatBirr(purchaseCost, cur)}</p>
-        <p>− {formatBirr(expenses, cur)}</p>
+    <Card className="card-raised bg-card p-3.5">
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Net Result</p>
+          <p className="mt-0.5 text-xl font-bold tnum leading-none" style={{ color }}>
+            {net < 0 ? "−" : isPositive ? "+" : ""}{formatBirr(Math.abs(net), cur)}
+          </p>
+          <p className="mt-0.5 text-[11px] font-medium" style={{ color }}>{label} today</p>
+        </div>
+        <div className="text-right space-y-0.5 text-[11px] tnum text-muted-foreground">
+          <p>+ {formatBirr(sales, cur)} <span className="text-muted-foreground/60">sales</span></p>
+          <p>− {formatBirr(purchaseCost, cur)} <span className="text-muted-foreground/60">purchase</span></p>
+          <p>− {formatBirr(expenses, cur)} <span className="text-muted-foreground/60">expenses</span></p>
+        </div>
       </div>
     </Card>
   );

@@ -4,28 +4,39 @@ import * as React from "react";
 import { BrandMark } from "@/components/brand";
 import { useNav } from "@/lib/nav";
 import { cn, initials } from "@/lib/utils";
+import { useLang } from "@/components/lang-provider";
 
 export function TopBar() {
   const view = useNav((s) => s.view);
+  const { lang, setLang, t } = useLang();
   const [now, setNow] = React.useState<string>("");
 
   React.useEffect(() => {
     const fmt = () =>
-      new Date().toLocaleDateString("en-GB", {
+      new Date().toLocaleDateString(lang === "am" ? "am-ET" : "en-GB", {
         weekday: "long",
         day: "numeric",
         month: "long",
       });
     setNow(fmt());
-  }, []);
+  }, [lang]);
 
-  const sub = view === "HOME" ? `Today's business · ${now}` : undefined;
+  const sub = view === "HOME" ? `${t("home.todaysSales")} · ${now}` : undefined;
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/50 bg-background/85 backdrop-blur-xl pt-safe">
       <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-4 py-2.5">
         <BrandMark size="sm" />
         <div className="flex items-center gap-2">
+          {/* Language toggle */}
+          <button
+            onClick={() => setLang(lang === "en" ? "am" : "en")}
+            className="grid h-9 min-w-9 place-items-center rounded-full bg-muted/60 px-2 text-[11px] font-bold text-muted-foreground hover:bg-muted hover:text-foreground tap-scale"
+            aria-label="Toggle language"
+            title={lang === "en" ? "Switch to Amharic" : "Switch to English"}
+          >
+            {lang === "en" ? "አማ" : "EN"}
+          </button>
           <button
             className="grid h-9 w-9 place-items-center rounded-full bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground tap-scale"
             aria-label="Lock"

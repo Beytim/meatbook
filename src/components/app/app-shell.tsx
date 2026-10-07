@@ -16,6 +16,8 @@ import { MoneyView } from "@/components/views/money-view";
 // when Turbopack compiled their chunks on-demand under the 4GB cgroup limit.
 import { PurchasesView } from "@/components/views/purchases-view";
 import { WastageView } from "@/components/views/wastage-view";
+import { CustomerDebtsView } from "@/components/views/customer-debts-view";
+import { SupplierLedgerView } from "@/components/views/supplier-ledger-view";
 
 // Secondary ("More") views are lazy-loaded to keep memory low under the cgroup limit.
 const loading = () => (
@@ -34,6 +36,8 @@ const VIEW_MAP: Record<ViewId, React.ComponentType> = {
   PRODUCT_SALES: dynamic(() => import("@/components/views/product-sales-view").then((m) => m.ProductSalesView), { loading }),
   PURCHASES: PurchasesView,
   WASTAGE: WastageView,
+  CUSTOMER_DEBTS: CustomerDebtsView,
+  SUPPLIER_LEDGER: SupplierLedgerView,
   EXPENSES: dynamic(() => import("@/components/views/expenses-view").then((m) => m.ExpensesView), { loading }),
   CASH_CONTROL: dynamic(() => import("@/components/views/cash-control-view").then((m) => m.CashControlView), { loading }),
   RECEIPTS: dynamic(() => import("@/components/views/receipts-view").then((m) => m.ReceiptsView), { loading }),

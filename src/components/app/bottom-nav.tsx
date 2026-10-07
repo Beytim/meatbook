@@ -3,6 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useNav, activePrimary, type ViewId } from "@/lib/nav";
+import { useLang } from "@/components/lang-provider";
 
 const Icon = {
   home: (
@@ -32,28 +33,29 @@ const Icon = {
   ),
 };
 
-const TABS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
-  { id: "HOME", label: "Home", icon: Icon.home },
-  { id: "SELL", label: "Sell", icon: Icon.sell },
-  { id: "PRODUCTS", label: "Products", icon: Icon.products },
-  { id: "MONEY", label: "Money", icon: Icon.money },
-  { id: "MORE", label: "More", icon: Icon.more },
+const TABS: { id: ViewId; labelKey: string; icon: React.ReactNode }[] = [
+  { id: "HOME", labelKey: "nav.home", icon: Icon.home },
+  { id: "SELL", labelKey: "nav.sell", icon: Icon.sell },
+  { id: "PRODUCTS", labelKey: "nav.products", icon: Icon.products },
+  { id: "MONEY", labelKey: "nav.money", icon: Icon.money },
+  { id: "MORE", labelKey: "nav.more", icon: Icon.more },
 ];
 
 export function BottomNav({ onMore }: { onMore: () => void }) {
   const view = useNav((s) => s.view);
   const go = useNav((s) => s.go);
+  const { t } = useLang();
   const active = activePrimary(view);
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-safe">
       <div className="pointer-events-auto mx-2 mb-2 flex w-full max-w-md items-center justify-around rounded-2xl border border-border/70 bg-card/85 px-1.5 py-1.5 shadow-2xl backdrop-blur-xl card-raised">
-        {TABS.map((t) => {
-          const isActive = t.id === "MORE" ? false : active === t.id;
+        {TABS.map((tab) => {
+          const isActive = tab.id === "MORE" ? false : active === tab.id;
           return (
             <button
-              key={t.id}
-              onClick={() => (t.id === "MORE" ? onMore() : go(t.id))}
+              key={tab.id}
+              onClick={() => (tab.id === "MORE" ? onMore() : go(tab.id))}
               className={cn(
                 "relative flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 tap-scale",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -62,17 +64,17 @@ export function BottomNav({ onMore }: { onMore: () => void }) {
               {isActive && (
                 <span className="absolute -top-0.5 h-1 w-7 rounded-full bg-primary" />
               )}
-              {t.id === "SELL" ? (
+              {tab.id === "SELL" ? (
                 <span className={cn(
                   "grid h-9 w-9 place-items-center rounded-xl transition-colors",
                   isActive ? "bg-primary text-primary-foreground meat-glow" : "bg-primary/15 text-primary"
                 )}>
-                  {t.icon}
+                  {tab.icon}
                 </span>
               ) : (
-                t.icon
+                tab.icon
               )}
-              <span className="text-[10px] font-semibold tracking-wide">{t.label}</span>
+              <span className="text-[10px] font-semibold tracking-wide">{t(tab.labelKey)}</span>
             </button>
           );
         })}

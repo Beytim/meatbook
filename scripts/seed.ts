@@ -161,7 +161,83 @@ async function main() {
   await db.sale.update({ where: { number: 1 }, data: { status: "REFUNDED" } });
   await db.sale.update({ where: { number: 17 }, data: { status: "VOIDED" } });
 
-  console.log(`seeded OK: ${products.length} products, ${saleNumber - 1} sales, ${STAFF.length} staff`);
+  // ─── Customers & Debts ──────────────────────────────────────────────
+  const customers = [
+    { name: "Abebe Kebede", phone: "+251 911 111 111" },
+    { name: "Helen Tesfaye", phone: "+251 911 222 222" },
+    { name: "Yonas Girma", phone: "+251 911 333 333" },
+    { name: "Meron Alemu", phone: "+251 911 444 444" },
+  ];
+  const custRecords = [];
+  for (const c of customers) {
+    custRecords.push(await db.customer.create({ data: c }));
+  }
+
+  // Debts: some open, some partially paid, some settled
+  const debts = [
+    { customerIdx: 0, amount: 1500, paid: 0, status: "OPEN", daysAgo: 2, note: "Meat on credit — weekend" },
+    { customerIdx: 1, amount: 800, paid: 300, status: "OPEN", daysAgo: 5, note: "Partial payment" },
+    { customerIdx: 2, amount: 2000, paid: 2000, status: "SETTLED", daysAgo: 10, note: "Fully paid" },
+    { customerIdx: 3, amount: 650, paid: 0, status: "OPEN", daysAgo: 1, note: "Liver + Heart" },
+  ];
+  for (const d of debts) {
+    const date = new Date(); date.setDate(date.getDate() - d.daysAgo);
+    const debt = await db.debt.create({
+      data: {
+        customerId: custRecords[d.customerIdx].id,
+        amount: d.amount,
+        paid: d.paid,
+        status: d.status,
+        note: d.note,
+        userName: "Abebe Owner",
+        createdAt: date,
+      },
+    });
+    // if partially paid, add a payment record
+    if (d.paid > 0) {
+      const payDate = new Date(date); payDate.setDate(payDate.getDate() + 1);
+      await db.debtPayment.create({
+        data: { debtId: debt.id, amount: d.paid, paymentMethod: "CASH", note: "Initial payment", userName: "Abebe Owner", createdAt: payDate },
+      });
+    }
+  }
+
+  // ─── Suppliers & Ledger ─────────────────────────────────────────────
+  const suppliers = [
+    { name: "Kera Slaughterhouse", phone: "+251 911 555 555" },
+    { name: "Addis Ababa Livestock Market", phone: "+251 911 666 666" },
+    { name: "Shola Meat Suppliers", phone: "+251 911 777 777" },
+  ];
+  const supRecords = [];
+  for (const s of suppliers) {
+    supRecords.push(await db.supplier.create({ data: s }));
+  }
+
+  // Ledger entries: debits (credit purchases) + credits (payments)
+  const ledger = [
+    { supIdx: 0, kind: "DEBIT", amount: 54000, daysAgo: 1, note: "1 Ox @ 180kg", method: null, detail: null },
+    { supIdx: 0, kind: "CREDIT", amount: 20000, daysAgo: 0, note: "Partial payment", method: "BANK", detail: "CBE" },
+    { supIdx: 1, kind: "DEBIT", amount: 4400, daysAgo: 3, note: "1 Goat @ 22kg", method: null, detail: null },
+    { supIdx: 2, kind: "DEBIT", amount: 10000, daysAgo: 7, note: "2 Sheep @ 50kg", method: null, detail: null },
+    { supIdx: 2, kind: "CREDIT", amount: 10000, daysAgo: 5, note: "Full payment", method: "MOBILE", detail: "Telebirr" },
+  ];
+  for (const l of ledger) {
+    const date = new Date(); date.setDate(date.getDate() - l.daysAgo);
+    await db.ledgerEntry.create({
+      data: {
+        supplierId: supRecords[l.supIdx].id,
+        kind: l.kind,
+        amount: l.amount,
+        note: l.note,
+        paymentMethod: l.method,
+        paymentDetail: l.detail,
+        userName: "Abebe Owner",
+        createdAt: date,
+      },
+    });
+  }
+
+  console.log(`seeded OK: ${products.length} products, ${saleNumber - 1} sales, ${STAFF.length} staff, ${customers.length} customers, ${debts.length} debts, ${suppliers.length} suppliers`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(() => db.$disconnect());

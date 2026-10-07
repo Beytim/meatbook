@@ -172,6 +172,95 @@ model MoneyMove {
   @@index([detail])
 }
 
+// ─── Customers & Debts (money owed TO the shop by customers) ───────────
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  note      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  debts     Debt[]
+
+  @@index([active])
+}
+
+model Debt {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  // the sale this debt came from (optional — can be a standalone credit)
+  saleId      String?
+  saleNumber  Int?
+  amount      Float    @default(0)    // original debt amount
+  paid        Float    @default(0)    // amount paid so far
+  status      String   @default("OPEN") // OPEN | SETTLED
+  dueDate     DateTime?
+  note        String?
+  userName    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  payments    DebtPayment[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DebtPayment {
+  id        String   @id @default(cuid())
+  debtId    String
+  debt      Debt     @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  amount    Float    @default(0)
+  // how the customer paid: CASH | MOBILE | BANK
+  paymentMethod String @default("CASH")
+  paymentDetail String?
+  note      String?
+  userName  String?
+  createdAt DateTime @default(now())
+
+  @@index([debtId])
+  @@index([createdAt])
+}
+
+// ─── Suppliers & Ledger (money owed BY the shop to suppliers) ──────────
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  note      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ledger    LedgerEntry[]
+
+  @@index([active])
+}
+
+model LedgerEntry {
+  id          String   @id @default(cuid())
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  // DEBIT = we owe more (bought on credit), CREDIT = we paid (reduced debt)
+  kind        String   // DEBIT | CREDIT
+  amount      Float    @default(0)
+  // optional link to the purchase that created this debit
+  purchaseId  String?
+  paymentMethod String? // for CREDIT entries: how we paid
+  paymentDetail String?
+  note        String?
+  userName    String?
+  createdAt   DateTime @default(now())
+
+  @@index([supplierId])
+  @@index([kind])
+  @@index([createdAt])
+}
+
 // ─── Staff ────────────────────────────────────────────────────────────
 model Staff {
   id        String   @id @default(cuid())

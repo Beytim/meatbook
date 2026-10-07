@@ -23,6 +23,8 @@ const MORE_GROUPS: { title: string; items: { id: ViewId; label: string; icon: Re
       { id: "WASTAGE", label: "Wastage", desc: "Record wasted meat", icon: <Ico path="M5 5l14 14 M16 5a3.5 3.5 0 0 1 0 5l-5 5a3.5 3.5 0 0 1-5-5l5-5a3.5 3.5 0 0 1 5 0z" /> },
       { id: "EXPENSES", label: "Expenses", desc: "Shop operations", icon: <Ico path="M2 7h20v12H2z M2 11h20 M16 15h2" /> },
       { id: "CASH_CONTROL", label: "Open / Close Cash", desc: "Cash drawer", icon: <Ico path="M3 7h18v12H3z M3 11h18 M8 15h3" /> },
+      { id: "CUSTOMER_DEBTS", label: "Customer Debts", desc: "Money owed to shop", icon: <Ico path="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2 M9.5 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M23 21v-2a4 4 0 0 0-3-3.8 M16 3.1a3.5 3.5 0 0 1 0 6.8" /> },
+      { id: "SUPPLIER_LEDGER", label: "Supplier Ledger", desc: "Money owed to suppliers", icon: <Ico path="M4 4v16h16V4z M8 10h8 M8 14h6 M8 7h8" /> },
     ],
   },
   {

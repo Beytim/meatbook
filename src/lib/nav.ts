@@ -21,7 +21,9 @@ export type ViewId =
   | "BACKUP"
   | "DEVICE"
   | "LICENSE"
-  | "SETTINGS";
+  | "SETTINGS"
+  | "CUSTOMER_DEBTS"
+  | "SUPPLIER_LEDGER";
 
 interface NavState {
   view: ViewId;
@@ -48,6 +50,8 @@ export const MORE_VIEWS: ViewId[] = [
   "RECEIPTS",
   "REFUND_VOID",
   "REPORTS",
+  "CUSTOMER_DEBTS",
+  "SUPPLIER_LEDGER",
   "STAFF",
   "AUDIT_LOG",
   "BACKUP",
@@ -105,6 +109,8 @@ export function activePrimary(view: ViewId): ViewId {
     case "WASTAGE":
     case "EXPENSES":
     case "CASH_CONTROL":
+    case "CUSTOMER_DEBTS":
+    case "SUPPLIER_LEDGER":
       return "MONEY";
     case "STAFF":
     case "AUDIT_LOG":

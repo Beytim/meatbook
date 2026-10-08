@@ -60,18 +60,23 @@ export function ProductsView() {
         </Button>
       </div>
 
-      {/* Sort toggle */}
-      <div className="mb-3 flex gap-1.5">
-        {([
-          { id: "name" as SortMode, label: "A-Z" },
-          { id: "today" as SortMode, label: "Today" },
-          { id: "alltime" as SortMode, label: "All-time" },
-        ]).map((s) => (
-          <button key={s.id} onClick={() => setSort(s.id)}
-            className={cn("rounded-full px-3 py-1.5 text-xs font-semibold tap-scale", sort === s.id ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {s.label}
+      {/* Sort toggle — simple and clear */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-[11px] text-muted-foreground">Sort by:</span>
+        <div className="flex gap-1.5">
+          <button onClick={() => setSort("name")}
+            className={cn("rounded-full px-3 py-1 text-xs font-semibold tap-scale", sort === "name" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+            Name
           </button>
-        ))}
+          <button onClick={() => setSort("today")}
+            className={cn("rounded-full px-3 py-1 text-xs font-semibold tap-scale", sort === "today" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+            Top Sellers Today
+          </button>
+          <button onClick={() => setSort("alltime")}
+            className={cn("rounded-full px-3 py-1 text-xs font-semibold tap-scale", sort === "alltime" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+            Top Sellers Ever
+          </button>
+        </div>
       </div>
 
       <SearchInput value={query} onChange={setQuery} placeholder="Search products by name…" className="mb-3" />
@@ -87,39 +92,33 @@ export function ProductsView() {
               <button onClick={() => setEditing(p)} className="block w-full p-3 text-left tap-scale">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5">
-                    {/* Rank badge when sorted by sales */}
                     {(sort === "today" || sort === "alltime") && (
-                      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">{idx + 1}</span>
+                      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">{idx + 1}</span>
                     )}
                     <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-lg", colorFromString(p.name))}>{p.emoji}</div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-bold">{p.name}</p>
-                        <Pill tone={p.active ? "good" : "muted"} className="!px-1.5 !py-0">{p.active ? "●" : "○"}</Pill>
+                        {!p.active && <span className="text-[9px] font-medium text-red-400">inactive</span>}
                       </div>
-                      <p className="text-[10px] text-muted-foreground tnum">TH {formatBirr(p.priceTakeHome)} · EH {formatBirr(p.priceEatHere)}</p>
+                      <p className="text-[10px] text-muted-foreground tnum">Take Home {formatBirr(p.priceTakeHome)} · Eat Here {formatBirr(p.priceEatHere)}</p>
                     </div>
                   </div>
                   <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                 </div>
 
-                {/* Inline sales stats */}
-                <div className="mt-2 grid grid-cols-2 gap-1.5">
-                  <div className={cn("rounded-lg px-2.5 py-1.5", p.todaySales > 0 ? "bg-emerald-500/8" : "bg-muted/20")}>
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Today</p>
-                    <div className="flex items-baseline gap-1.5">
-                      <p className={cn("text-sm font-bold tnum", p.todaySales > 0 ? "text-emerald-400" : "text-muted-foreground")}>{formatBirr(p.todaySales)}</p>
-                      {p.todayCount > 0 && <p className="text-[10px] text-muted-foreground tnum">{p.todayCount}× · {formatKg(p.todayKg)}</p>}
-                    </div>
+                {/* Sold today — only shows if it actually sold today */}
+                {p.todaySales > 0 ? (
+                  <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-emerald-500/8 px-2.5 py-1.5">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                    <span className="text-[11px] font-semibold text-emerald-400">Sold today: {formatBirr(p.todaySales)}</span>
+                    <span className="text-[10px] text-muted-foreground tnum">{p.todayCount} sale{p.todayCount > 1 ? "s" : ""} · {formatKg(p.todayKg)}</span>
                   </div>
-                  <div className={cn("rounded-lg px-2.5 py-1.5", p.allTimeSales > 0 ? "bg-sky-500/8" : "bg-muted/20")}>
-                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">All-time</p>
-                    <div className="flex items-baseline gap-1.5">
-                      <p className={cn("text-sm font-bold tnum", p.allTimeSales > 0 ? "text-sky-400" : "text-muted-foreground")}>{formatBirr(p.allTimeSales)}</p>
-                      {p.allTimeCount > 0 && <p className="text-[10px] text-muted-foreground tnum">{p.allTimeCount}× · {formatKg(p.allTimeKg)}</p>}
-                    </div>
+                ) : (
+                  <div className="mt-2 flex items-center gap-1.5 px-2.5 py-1">
+                    <span className="text-[11px] text-muted-foreground">Not sold today</span>
                   </div>
-                </div>
+                )}
               </button>
             </Card>
           ))}

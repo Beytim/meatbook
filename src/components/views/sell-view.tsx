@@ -265,13 +265,7 @@ export function SellView() {
                   </span>
                 </div>
               )}
-              {/* Quick cash buttons */}
-              <div className="mt-1.5 flex gap-1.5">
-                <button onClick={() => setCashReceived(String(total))} className="flex-1 rounded-md bg-emerald-500/15 py-1 text-[10px] font-semibold text-emerald-400">Exact</button>
-                <button onClick={() => setCashReceived(String(Math.ceil(total / 100) * 100))} className="flex-1 rounded-md bg-muted/60 py-1 text-[10px] font-semibold">Round↑</button>
-                <button onClick={() => setCashReceived(String(Math.ceil(total / 500) * 500))} className="flex-1 rounded-md bg-muted/60 py-1 text-[10px] font-semibold">500</button>
-                <button onClick={() => setCashReceived(String(Math.ceil(total / 1000) * 1000))} className="flex-1 rounded-md bg-muted/60 py-1 text-[10px] font-semibold">1000</button>
-              </div>
+              {/* Quick cash buttons removed per owner request */}
             </div>
           )}
 

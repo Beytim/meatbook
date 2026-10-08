@@ -172,7 +172,7 @@ export function SellView() {
   const cartContent = (
     <>
       {/* Items list */}
-      <div className="mb-scroll flex-1 overflow-y-auto px-2 py-2">
+      <div className="mb-scroll max-h-[30vh] overflow-y-auto px-2 py-2">
         {cart.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Cart is empty. Tap a product to add.</p>
         ) : (
@@ -403,7 +403,7 @@ export function SellView() {
 
       {/* Mobile: Cart drawer */}
       <Drawer open={cartOpen} onOpenChange={setCartOpen}>
-        <DrawerContent className="mx-auto max-w-2xl rounded-t-3xl border-border/70 bg-background lg:hidden">
+        <DrawerContent className="mx-auto max-h-[92vh] max-w-2xl rounded-t-3xl border-border/70 bg-background lg:hidden">
           <DrawerHeader className="border-b border-border/60 px-4 pb-3">
             <DrawerTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
@@ -413,9 +413,9 @@ export function SellView() {
               <span className="text-xs text-muted-foreground tnum">{cart.length} item{cart.length > 1 ? "s" : ""} · {totalKg.toFixed(2)} kg</span>
             </DrawerTitle>
           </DrawerHeader>
-          <DrawerFooter className="flex flex-1 flex-col gap-0 p-0">
+          <div className="mb-scroll flex max-h-[calc(92vh-60px)] flex-col overflow-y-auto">
             {cartContent}
-          </DrawerFooter>
+          </div>
         </DrawerContent>
       </Drawer>
 

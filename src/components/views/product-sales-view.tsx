@@ -66,10 +66,29 @@ export function ProductSalesView() {
   const [period, setPeriod] = React.useState<PeriodKey>("7D");
   const [typeFilter, setTypeFilter] = React.useState<TypeFilter>("ALL");
   const [query, setQuery] = React.useState("");
+  const [customFrom, setCustomFrom] = React.useState<string>(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10);
+  });
+  const [customTo, setCustomTo] = React.useState<string>(() => new Date().toISOString().slice(0, 10));
+
+  const isCustom = period === "CUSTOM";
 
   const { data, isLoading } = useQuery<SalesResp>({
-    queryKey: ["sales", period],
-    queryFn: () => fetchSales(period),
+    queryKey: ["sales", period, customFrom, customTo],
+    queryFn: async () => {
+      if (isCustom) {
+        const r = await fetch(`/api/meat/sales?period=ALL`);
+        if (!r.ok) throw new Error("failed");
+        const j: SalesResp = await r.json();
+        const fromD = new Date(customFrom + "T00:00:00");
+        const toD = new Date(customTo + "T23:59:59.999");
+        j.sales = j.sales.filter((s) => { const c = new Date(s.createdAt); return c >= fromD && c <= toD; });
+        const completed = j.sales.filter((s) => s.status === "COMPLETED");
+        j.stats = { revenue: completed.reduce((a, b) => a + b.total, 0), kgSold: completed.reduce((a, b) => a + b.totalKg, 0), count: completed.length };
+        return j;
+      }
+      return fetchSales(period);
+    },
   });
 
   // Aggregate per product, respecting the type filter
@@ -134,9 +153,22 @@ export function ProductSalesView() {
         <PeriodTabs
           value={period}
           onChange={setPeriod}
-          periods={["TODAY", "YESTERDAY", "7D", "30D", "MONTH", "ALL"]}
+          periods={["TODAY", "YESTERDAY", "7D", "30D", "MONTH", "YEAR", "CUSTOM"]}
         />
       </div>
+
+      {isCustom && (
+        <Card className="mb-4 grid grid-cols-2 gap-3 p-3 card-raised">
+          <div>
+            <label className="text-xs text-muted-foreground">From</label>
+            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-sm tnum" />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">To</label>
+            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="mt-1 h-9 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-sm tnum" />
+          </div>
+        </Card>
+      )}
 
       {/* Type filter toggle */}
       <div className="mb-4 grid grid-cols-3 gap-1.5">
@@ -274,41 +306,30 @@ export function ProductSalesView() {
 
 // ─── Product card ───────────────────────────────────────────────────────
 function ProductCard({ p }: { p: ProductAgg }) {
+  const avgPricePerKg = p.kg > 0 ? Math.round((p.revenue / p.kg) * 100) / 100 : 0;
   return (
-    <Card className="p-4 card-raised">
-      <div className="flex items-start justify-between gap-3">
+    <Card className="p-3.5 card-raised">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-bold">{p.name}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground tnum">
-            {p.count} {p.count === 1 ? "sale" : "sales"} · <Kg kg={p.kg} />
+            {p.count} {p.count === 1 ? "sale" : "sales"} · <Kg kg={p.kg} /> · avg {formatBirr(avgPricePerKg)}/kg
           </p>
         </div>
-        <p className="shrink-0 text-base font-bold tnum">
+        <p className="shrink-0 text-base font-bold tnum text-emerald-400">
           <Money amount={p.revenue} />
         </p>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="rounded-lg bg-amber-500/10 p-2.5 ring-1 ring-amber-500/15">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">
-            Take Home · OUT
-          </p>
-          <p className="mt-0.5 text-sm font-bold tnum">
-            <Money amount={p.takeHome.revenue} />
-          </p>
-          <p className="text-[10px] text-muted-foreground tnum">
-            {p.takeHome.count} sales · {formatKg(p.takeHome.kg)}
-          </p>
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-amber-500/10 p-2 ring-1 ring-amber-500/15">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">Take Home · OUT</p>
+          <p className="mt-0.5 text-sm font-bold tnum"><Money amount={p.takeHome.revenue} /></p>
+          <p className="text-[10px] text-muted-foreground tnum">{p.takeHome.count} sales · {formatKg(p.takeHome.kg)}</p>
         </div>
-        <div className="rounded-lg bg-emerald-500/10 p-2.5 ring-1 ring-emerald-500/15">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
-            Eat Here · IN
-          </p>
-          <p className="mt-0.5 text-sm font-bold tnum">
-            <Money amount={p.eatHere.revenue} />
-          </p>
-          <p className="text-[10px] text-muted-foreground tnum">
-            {p.eatHere.count} sales · {formatKg(p.eatHere.kg)}
-          </p>
+        <div className="rounded-lg bg-emerald-500/10 p-2 ring-1 ring-emerald-500/15">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400">Eat Here · IN</p>
+          <p className="mt-0.5 text-sm font-bold tnum"><Money amount={p.eatHere.revenue} /></p>
+          <p className="text-[10px] text-muted-foreground tnum">{p.eatHere.count} sales · {formatKg(p.eatHere.kg)}</p>
         </div>
       </div>
     </Card>

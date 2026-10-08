@@ -60,6 +60,10 @@ export function CashControlView() {
 
   const open = data?.open ?? null;
   const closedSessions = (data?.sessions ?? []).filter((s) => s.status === "CLOSED");
+  // Include justClosed session in the list if not already there (for immediate display)
+  const allClosedSessions = justClosed && !closedSessions.find((s) => s.id === justClosed.id)
+    ? [justClosed, ...closedSessions]
+    : closedSessions;
 
   function handleCloseSuccess(session: CashSession) {
     setJustClosed(session);
@@ -210,7 +214,7 @@ export function CashControlView() {
 
       {isLoading ? (
         <ListSkeleton rows={3} />
-      ) : closedSessions.length === 0 ? (
+      ) : allClosedSessions.length === 0 ? (
         <EmptyState
           icon={
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -224,7 +228,7 @@ export function CashControlView() {
         />
       ) : (
         <div className="space-y-2.5">
-          {closedSessions.map((s) => (
+          {allClosedSessions.map((s) => (
             <SessionRow key={s.id} session={s} />
           ))}
         </div>

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNav } from "@/lib/nav";
-import { formatBirr, formatKg, formatTime } from "@/lib/utils";
+import { formatBirr, formatKg, formatTime, cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Pill } from "@/components/app/primitives";
 import { AccountTreeCard, type AccountTree } from "@/components/app/account-tree";

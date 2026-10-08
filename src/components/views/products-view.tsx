@@ -120,8 +120,9 @@ export function ProductsView() {
                   )}
                   {/* All-time total — always visible */}
                   {p.allTimeSales > 0 && (
-                    <span className="text-[10px] text-muted-foreground tnum">
-                      Total: {formatBirr(p.allTimeSales)} · {p.allTimeCount} sales · {formatKg(p.allTimeKg)}
+                    <span className="text-[10px] tnum">
+                      <span className="text-emerald-400 font-semibold">Total: {formatBirr(p.allTimeSales)}</span>
+                      <span className="text-muted-foreground"> · {p.allTimeCount} sales · {formatKg(p.allTimeKg)}</span>
                     </span>
                   )}
                 </div>

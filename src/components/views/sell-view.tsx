@@ -247,40 +247,37 @@ export function SellView() {
 
           {/* Cash received + change calculator */}
           {payment === "CASH" && (
-            <div className="rounded-lg bg-emerald-500/5 p-2.5 ring-1 ring-emerald-500/20">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-muted-foreground shrink-0">Received</span>
-                <input
-                  value={cashReceived}
-                  onChange={(e) => setCashReceived(e.target.value)}
-                  inputMode="decimal"
-                  placeholder={String(total)}
-                  className="h-8 w-32 rounded-lg border border-border/60 bg-background/60 px-2 text-xs tnum text-right"
-                />
-              </div>
+            <div>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Cash Received</p>
+              <input
+                value={cashReceived}
+                onChange={(e) => setCashReceived(e.target.value)}
+                inputMode="decimal"
+                placeholder={String(total)}
+                className="h-9 w-full rounded-lg border border-border/60 bg-background/60 px-3 text-sm tnum text-right focus:border-primary/50 focus:outline-none"
+              />
               {cashReceivedNum > 0 && (
-                <div className="mt-1.5 flex items-center justify-between">
+                <div className="mt-1.5 flex items-center justify-between rounded-lg bg-emerald-500/5 px-3 py-2">
                   <span className="text-[11px] text-muted-foreground">Change</span>
                   <span className={cn("text-base font-bold tnum", change >= 0 ? "text-emerald-400" : "text-red-400")}>
                     {change >= 0 ? formatBirr(change) : `Short ${formatBirr(total - cashReceivedNum)}`}
                   </span>
                 </div>
               )}
-              {/* Quick cash buttons removed per owner request */}
             </div>
           )}
 
           {/* Credit customer selector */}
           {payment === "CREDIT" && (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">Sell on Credit — creates debt</p>
+            <div>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Customer (Credit)</p>
               {customers.length > 0 && (
-                <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mb-1.5 h-8 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-xs">
+                <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mb-1.5 h-9 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-sm">
                   <option value="">— Select existing customer —</option>
                   {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               )}
-              <input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="…or type new customer name" className="h-8 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-xs" />
+              <input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="…or type new customer name" className="h-9 w-full rounded-lg border border-border/60 bg-background/60 px-3 text-sm" />
             </div>
           )}
 

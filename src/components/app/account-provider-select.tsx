@@ -84,7 +84,7 @@ export function AccountProviderSelect({
             <button
               key={o.id}
               type="button"
-              onClick={() => { onChange(o.name); setOpen(false); }}
+              onClick={() => { onChange(o.short || o.name); setOpen(false); }}
               className={cn(
                 "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs tap-scale hover:bg-muted/70",
                 value === o.id || value === o.name || value === o.short ? "bg-primary/10" : ""

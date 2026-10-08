@@ -149,7 +149,7 @@ export function SalesHistoryView() {
         {(["ALL", "CASH", "MOBILE", "BANK", "CREDIT"] as const).map((p) => (
           <button key={p} onClick={() => setPayFilter(p)}
             className={cn("rounded-full px-3 py-1 text-[11px] font-semibold tap-scale", payFilter === p ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {p === "ALL" ? "All Pay" : p === "CASH" ? "💵" : p === "MOBILE" ? "📱" : p === "BANK" ? "🏦" : "🤝"}
+            {p === "ALL" ? "All" : p === "CASH" ? "Cash" : p === "MOBILE" ? "Mobile" : p === "BANK" ? "Bank" : "Credit"}
           </button>
         ))}
       </div>

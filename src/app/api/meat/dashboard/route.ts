@@ -20,13 +20,16 @@ export async function GET() {
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - 6);
   weekStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
   // Single source of truth for the dashboard: today's completed sales.
   const todayWhere = { createdAt: { gte: today.from, lte: today.to }, status: "COMPLETED" };
   const todayRange = { createdAt: { gte: today.from, lte: today.to } };
   const yesterdayRange = { createdAt: { gte: yesterday.from, lte: yesterday.to } };
   const createdAtRange = todayRange;
 
-  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail, todayPurchases, todayExpensesAgg, todayTopProducts, recentSales, debtsAgg, supplierDebitAgg, supplierCreditAgg, yesterdayAgg, refundsToday, weekAgg, methodSplit, wastageToday] = await Promise.all([
+  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail, todayPurchases, todayExpensesAgg, todayTopProducts, recentSales, debtsAgg, supplierDebitAgg, supplierCreditAgg, yesterdayAgg, monthAgg, weekAgg, methodSplit, wastageToday] = await Promise.all([
     db.sale.count({ where: todayWhere }),
     db.sale.aggregate({ where: todayWhere, _sum: { total: true, totalKg: true }, _count: true }),
     db.sale.aggregate({ where: { ...todayWhere, type: "TAKE_HOME" }, _sum: { total: true, totalKg: true }, _count: true }),
@@ -48,8 +51,8 @@ export async function GET() {
     // ─── Missing metrics for world-standard dashboard ───────────────
     // Yesterday's revenue for comparison
     db.sale.aggregate({ where: { status: "COMPLETED", createdAt: { gte: yesterdayRange.from, lte: yesterdayRange.to } }, _sum: { total: true, totalKg: true }, _count: true }),
-    // Refunds/voids today
-    db.sale.count({ where: { status: { in: ["VOIDED", "REFUNDED"] }, ...createdAtRange } }),
+    // Month-to-date revenue
+    db.sale.aggregate({ where: { status: "COMPLETED", createdAt: { gte: monthStart } }, _sum: { total: true }, _count: true }),
     // Week-to-date revenue
     db.sale.aggregate({ where: { status: "COMPLETED", createdAt: { gte: weekStart } }, _sum: { total: true }, _count: true }),
     // Payment method split for today (for donut)
@@ -231,7 +234,7 @@ export async function GET() {
     yesterdayRevenue: Number(yesterdayAgg._sum.total ?? 0),
     yesterdayCount: yesterdayAgg._count,
     revenueChange: yesterdayAgg._sum.total ? Math.round(((todayRevenue - Number(yesterdayAgg._sum.total)) / Number(yesterdayAgg._sum.total)) * 1000) / 10 : 0,
-    refundsToday,
+    monthRevenue: Number(monthAgg._sum.total ?? 0),
     weekRevenue: Number(weekAgg._sum.total ?? 0),
     weekCount: weekAgg._count,
     methodSplit: methodSplit.map((m) => ({

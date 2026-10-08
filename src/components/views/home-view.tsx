@@ -48,7 +48,7 @@ interface DashboardData {
   yesterdayRevenue: number;
   yesterdayCount: number;
   revenueChange: number;
-  refundsToday: number;
+  monthRevenue: number;
   weekRevenue: number;
   weekCount: number;
   methodSplit: { method: string; revenue: number; pct: number }[];
@@ -144,8 +144,8 @@ export function HomeView() {
           <p className="mt-0.5 text-xs font-bold tnum">{formatBirr(data.weekRevenue, cur)}</p>
         </Card>
         <Card className="card-raised bg-card p-2 text-center">
-          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Refunds</p>
-          <p className={cn("mt-0.5 text-xs font-bold tnum", data.refundsToday > 0 ? "text-red-400" : "text-muted-foreground")}>{data.refundsToday}</p>
+          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Month</p>
+          <p className="mt-0.5 text-xs font-bold tnum">{formatBirr(data.monthRevenue, cur)}</p>
         </Card>
       </div>
 

@@ -34,6 +34,7 @@ interface Expense {
   note: string | null;
   paymentMethod: string;
   paymentDetail?: string | null;
+  frequency?: string | null;
   userName: string | null;
   createdAt: string;
 }
@@ -214,36 +215,50 @@ export function ExpensesView() {
 
 // ─── Row ────────────────────────────────────────────────────────────────
 function ExpenseRow({ expense: e }: { expense: Expense }) {
+  const qc = useQueryClient();
+  const [confirmDel, setConfirmDel] = React.useState(false);
+  const del = useMutation({
+    mutationFn: async () => {
+      const r = await fetch(`/api/meat/expenses/${e.id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("failed");
+    },
+    onSuccess: () => {
+      toast.success("Expense deleted");
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["money"] });
+    },
+    onError: () => toast.error("Could not delete"),
+  });
   return (
-    <Card className="p-3.5 card-raised">
-      <div className="flex items-start justify-between gap-3">
+    <Card className="p-3 card-raised">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-500/15 text-red-400">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M19 12l-7 7-7-7" />
-            </svg>
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-500/15 text-red-400">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M19 12l-7 7-7-7" /></svg>
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <Pill tone={categoryTone(e.category)}>{e.category}</Pill>
+              {e.frequency === "MONTHLY" && <Pill tone="warn">Monthly</Pill>}
             </div>
-            <p className="mt-1 truncate text-[11px] text-muted-foreground">
-              {e.note || "—"}
-            </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {formatDate(e.createdAt)} · {formatTime(e.createdAt)} · {e.userName || "—"}
-            </p>
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{e.note || "—"}</p>
+            <p className="text-[10px] text-muted-foreground">{formatDate(e.createdAt)} · {formatTime(e.createdAt)} · {e.userName || "—"}</p>
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-sm font-bold tnum text-red-400">
-            −<Money amount={e.amount} />
-          </p>
-          <Pill tone="muted" className="mt-0.5">
-            {e.paymentDetail ? subAccountName(e.paymentMethod as PaymentMethod, e.paymentDetail) : paymentLabel(e.paymentMethod)}
-          </Pill>
+          <p className="text-sm font-bold tnum text-red-400">−<Money amount={e.amount} /></p>
+          <Pill tone="muted" className="mt-0.5">{e.paymentDetail ? subAccountName(e.paymentMethod as PaymentMethod, e.paymentDetail) : paymentLabel(e.paymentMethod)}</Pill>
         </div>
       </div>
+      {confirmDel ? (
+        <div className="mt-2 flex gap-2">
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmDel(false)}>Cancel</Button>
+          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => del.mutate()} disabled={del.isPending}>{del.isPending ? "Deleting…" : "Confirm Delete"}</Button>
+        </div>
+      ) : (
+        <button onClick={() => setConfirmDel(true)} className="mt-1.5 text-[10px] font-medium text-red-400/70 hover:text-red-400">Delete</button>
+      )}
     </Card>
   );
 }

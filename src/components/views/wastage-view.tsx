@@ -87,31 +87,58 @@ export function WastageView() {
         />
       ) : (
         <div className="space-y-2">
-          {entries.map((e) => (
-            <Card key={e.id} className="card-raised bg-card p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-red-500/15 text-red-400">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 5a3.5 3.5 0 0 1 0 5l-5 5a3.5 3.5 0 0 1-5-5l5-5a3.5 3.5 0 0 1 5 0z M9 9l6 6" /></svg>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{e.name}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">{e.reason || e.note || "—"} · {e.userName || "—"}</p>
-                    <p className="text-[10px] text-muted-foreground">{formatDate(e.createdAt)} · {formatTime(e.createdAt)}</p>
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-bold tnum text-red-400">−<Kg kg={e.kg} /></p>
-                  {e.reason && <Pill tone="bad" className="mt-0.5">{e.reason}</Pill>}
-                </div>
-              </div>
-            </Card>
-          ))}
+          {entries.map((e) => <WastageRow key={e.id} entry={e} />)}
         </div>
       )}
 
       <RecordWastageDialog open={recordOpen} onOpenChange={setRecordOpen} period={period} />
     </PageScaffold>
+  );
+}
+
+// ─── Row with delete ─────────────────────────────────────────────────
+function WastageRow({ entry: e }: { entry: WastageEntry }) {
+  const qc = useQueryClient();
+  const [confirmDel, setConfirmDel] = React.useState(false);
+  const del = useMutation({
+    mutationFn: async () => {
+      const r = await fetch(`/api/meat/wastage/${e.id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("failed");
+    },
+    onSuccess: () => {
+      toast.success("Waste entry deleted");
+      qc.invalidateQueries({ queryKey: ["wastage"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => toast.error("Could not delete"),
+  });
+  return (
+    <Card className="card-raised bg-card p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-red-500/15 text-red-400">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 5a3.5 3.5 0 0 1 0 5l-5 5a3.5 3.5 0 0 1-5-5l5-5a3.5 3.5 0 0 1 5 0z M9 9l6 6" /></svg>
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{e.name}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{e.reason || e.note || "—"} · {e.userName || "—"}</p>
+            <p className="text-[10px] text-muted-foreground">{formatDate(e.createdAt)} · {formatTime(e.createdAt)}</p>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-sm font-bold tnum text-red-400">−<Kg kg={e.kg} /></p>
+          {e.reason && <Pill tone="bad" className="mt-0.5">{e.reason}</Pill>}
+        </div>
+      </div>
+      {confirmDel ? (
+        <div className="mt-2 flex gap-2">
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmDel(false)}>Cancel</Button>
+          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => del.mutate()} disabled={del.isPending}>{del.isPending ? "Deleting…" : "Confirm Delete"}</Button>
+        </div>
+      ) : (
+        <button onClick={() => setConfirmDel(true)} className="mt-1.5 text-[10px] font-medium text-red-400/70 hover:text-red-400">Delete</button>
+      )}
+    </Card>
   );
 }
 

@@ -108,29 +108,7 @@ export function PurchasesView() {
             const primary = p.items.find((i) => i.animalType)?.animalType;
             return (
               <Card key={p.id} className="card-raised bg-card p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-base ring-1 ${primary ? animalTone(primary) : "bg-red-500/15 text-red-400 ring-red-500/20"}`}>
-                      {primary ? animalEmoji(primary) : "↓"}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">{p.supplier || "—"}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">{p.note || formatDate(p.createdAt)} · {p.userName || "—"}</p>
-                    </div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-sm font-bold tnum text-red-400">−<Money amount={p.total} /></p>
-                    <Pill tone="muted" className="mt-0.5">{p.paymentDetail ? subAccountName(p.paymentMethod as PaymentMethod, p.paymentDetail) : paymentLabel(p.paymentMethod)}</Pill>
-                  </div>
-                </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  {animals.map((a) => (
-                    <span key={a} className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${animalTone(a)}`}>
-                      {animalEmoji(a)} {animalName(a)}
-                    </span>
-                  ))}
-                  <span className="text-[10px] text-muted-foreground tnum">{p.items.length} animal{p.items.length > 1 ? "s" : ""} · <Kg kg={kg} /></span>
-                </div>
+                <PurchaseRow purchase={p} kg={kg} animals={animals} primary={primary} />
               </Card>
             );
           })}
@@ -139,6 +117,64 @@ export function PurchasesView() {
 
       <RecordPurchaseDialog open={recordOpen} onOpenChange={setRecordOpen} period={period} />
     </PageScaffold>
+  );
+}
+
+// ─── Row with delete ─────────────────────────────────────────────────
+function PurchaseRow({ purchase: p, kg, animals, primary }: {
+  purchase: Purchase; kg: number; animals: string[]; primary?: string;
+}) {
+  const qc = useQueryClient();
+  const [confirmDel, setConfirmDel] = React.useState(false);
+  const del = useMutation({
+    mutationFn: async () => {
+      const r = await fetch(`/api/meat/purchases/${p.id}`, { method: "DELETE" });
+      if (!r.ok) throw new Error("failed");
+    },
+    onSuccess: () => {
+      toast.success("Purchase deleted");
+      qc.invalidateQueries({ queryKey: ["purchases"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["money"] });
+      qc.invalidateQueries({ queryKey: ["suppliers"] });
+      qc.invalidateQueries({ queryKey: ["ledger"] });
+    },
+    onError: () => toast.error("Could not delete"),
+  });
+  return (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-base ring-1 ${primary ? animalTone(primary) : "bg-red-500/15 text-red-400 ring-red-500/20"}`}>
+            {primary ? animalEmoji(primary) : "↓"}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{p.supplier || "—"}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{p.note || formatDate(p.createdAt)} · {p.userName || "—"}</p>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-sm font-bold tnum text-red-400">−<Money amount={p.total} /></p>
+          <Pill tone="muted" className="mt-0.5">{p.paymentDetail ? subAccountName(p.paymentMethod as PaymentMethod, p.paymentDetail) : paymentLabel(p.paymentMethod)}</Pill>
+        </div>
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        {animals.map((a) => (
+          <span key={a} className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ${animalTone(a)}`}>
+            {animalEmoji(a)} {animalName(a)}
+          </span>
+        ))}
+        <span className="text-[10px] text-muted-foreground tnum">{p.items.length} animal{p.items.length > 1 ? "s" : ""} · <Kg kg={kg} /></span>
+      </div>
+      {confirmDel ? (
+        <div className="mt-2 flex gap-2">
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmDel(false)}>Cancel</Button>
+          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => del.mutate()} disabled={del.isPending}>{del.isPending ? "Deleting…" : "Confirm Delete"}</Button>
+        </div>
+      ) : (
+        <button onClick={() => setConfirmDel(true)} className="mt-1.5 text-[10px] font-medium text-red-400/70 hover:text-red-400">Delete</button>
+      )}
+    </>
   );
 }
 

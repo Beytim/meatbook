@@ -5,7 +5,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useNav } from "@/lib/nav";
 import {
   formatBirr, formatKg, formatDateTime, cn,
-  type PeriodKey, periodLabel,
 } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,32 +82,21 @@ export function SalesHistoryView() {
   const [debouncedQ, setDebouncedQ] = React.useState(q);
   React.useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 250); return () => clearTimeout(t); }, [q]);
 
-  const isCustom = period === "CUSTOM";
-  const queryKey = isCustom
-    ? ["sales", "CUSTOM", customFrom, customTo, debouncedQ, statusFilter]
-    : ["sales", period, debouncedQ, statusFilter];
+  const queryKey = ["sales", "CUSTOM", customFrom, customTo, debouncedQ, statusFilter, payFilter];
 
   const { data, isLoading } = useQuery<SalesResp>({
     queryKey,
     queryFn: async () => {
-      if (isCustom) {
-        const r = await fetch(`/api/meat/sales?period=ALL&q=${encodeURIComponent(debouncedQ)}`);
-        if (!r.ok) throw new Error("failed");
-        const j: SalesResp = await r.json();
-        const fromD = new Date(customFrom + "T00:00:00");
-        const toD = new Date(customTo + "T23:59:59.999");
-        let filtered = j.sales.filter((s) => { const c = new Date(s.createdAt); return c >= fromD && c <= toD; });
-        if (statusFilter !== "ALL") filtered = filtered.filter((s) => s.status === statusFilter);
-        if (payFilter !== "ALL") filtered = filtered.filter((s) => s.paymentMethod === payFilter);
-        const completed = filtered.filter((s) => s.status === "COMPLETED");
-        return { sales: filtered, stats: { revenue: completed.reduce((a, b) => a + b.total, 0), kgSold: completed.reduce((a, b) => a + b.totalKg, 0), count: completed.length } };
-      }
-      const r = await fetchSales(period, debouncedQ, statusFilter);
-      // Client-side payment filter (API doesn't support it)
-      if (payFilter !== "ALL") {
-        r.sales = r.sales.filter((s) => s.paymentMethod === payFilter);
-      }
-      return r;
+      const r = await fetch(`/api/meat/sales?period=ALL&q=${encodeURIComponent(debouncedQ)}`);
+      if (!r.ok) throw new Error("failed");
+      const j: SalesResp = await r.json();
+      const fromD = new Date(customFrom + "T00:00:00");
+      const toD = new Date(customTo + "T23:59:59.999");
+      let filtered = j.sales.filter((s) => { const c = new Date(s.createdAt); return c >= fromD && c <= toD; });
+      if (statusFilter !== "ALL") filtered = filtered.filter((s) => s.status === statusFilter);
+      if (payFilter !== "ALL") filtered = filtered.filter((s) => s.paymentMethod === payFilter);
+      const completed = filtered.filter((s) => s.status === "COMPLETED");
+      return { sales: filtered, stats: { revenue: completed.reduce((a, b) => a + b.total, 0), kgSold: completed.reduce((a, b) => a + b.totalKg, 0), count: completed.length } };
     },
   });
 
@@ -117,22 +105,17 @@ export function SalesHistoryView() {
 
   return (
     <PageScaffold title="Sales History" subtitle="All transactions, newest first" onBack={() => back()}>
-      <div className="mb-3">
-        <PeriodTabs value={period} onChange={setPeriod} periods={["TODAY", "YESTERDAY", "7D", "30D", "MONTH", "YEAR", "CUSTOM"]} />
-      </div>
-
-      {isCustom && (
-        <Card className="mb-3 grid grid-cols-2 gap-3 p-3 card-raised">
-          <div>
-            <Label className="text-xs text-muted-foreground">From</Label>
-            <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="mt-1 tnum" />
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">To</Label>
-            <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="mt-1 tnum" />
-          </div>
-        </Card>
-      )}
+      {/* Date range — always visible */}
+      <Card className="mb-3 grid grid-cols-2 gap-3 p-3 card-raised">
+        <div>
+          <Label className="text-xs text-muted-foreground">From</Label>
+          <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="mt-1 tnum" />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">To</Label>
+          <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="mt-1 tnum" />
+        </div>
+      </Card>
 
       {/* Status filter */}
       <div className="mb-2 flex gap-1.5">
@@ -158,7 +141,7 @@ export function SalesHistoryView() {
 
       {/* Stat tiles */}
       <div className="mb-4 grid grid-cols-3 gap-2.5">
-        <StatTile label="Revenue" value={<Money amount={stats?.revenue ?? 0} />} sub={periodLabel(period)} tone="primary" />
+        <StatTile label="Revenue" value={<Money amount={stats?.revenue ?? 0} />} sub={`${customFrom} → ${customTo}`} tone="primary" />
         <StatTile label="Sales" value={<span className="tnum">{stats?.count ?? 0}</span>} sub="completed" tone="default" />
         <StatTile label="Total Kg" value={<Kg kg={stats?.kgSold ?? 0} />} sub="sold" tone="default" />
       </div>

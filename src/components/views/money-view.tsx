@@ -21,7 +21,7 @@ interface MoneyData {
   accounts: { cash: number; mobile: number; bank: number };
   tree: { CASH: AccountTree; MOBILE: AccountTree; BANK: AccountTree };
   flow: { in: number; out: number; net: number };
-  transactions: { id: string; kind: string; account: string; detail?: string | null; amount: number; reason: string | null; note: string | null; userName: string | null; createdAt: string }[];
+  transactions: { id: string; kind: string; source: string; account: string; detail?: string | null; amount: number; reason: string; note?: string | null; userName: string | null; createdAt: string }[];
 }
 
 async function fetchMoney(period: PeriodKey): Promise<MoneyData> {
@@ -80,41 +80,43 @@ export function MoneyView() {
             <FlowTile label="Net Cash Flow" value={data?.flow.net ?? 0} tone={((data?.flow.net ?? 0)) >= 0 ? "good" : "bad"} sub={periodLabel(period)} />
           </div>
 
-          {/* Transactions */}
-          <h2 className="mb-2 px-1 text-base font-semibold">Transactions</h2>
+          {/* Unified Transactions — sales + purchases + expenses + moves */}
+          <div className="mb-2 flex items-center justify-between px-1">
+            <h2 className="text-sm font-semibold">All Transactions</h2>
+            <span className="text-[10px] text-muted-foreground">{data?.transactions.length ?? 0} entries</span>
+          </div>
           {data?.transactions.length === 0 ? (
             <EmptyState
               icon={<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18" /></svg>}
-              title="No money movements in this period."
-              description="Try a wider period or record a manual Cash In / Cash Out."
+              title="No transactions in this period."
+              description="Sales, purchases, expenses, and manual moves will appear here."
               action={<Button onClick={() => setMoveOpen(true)} className="bg-primary text-primary-foreground">{tab === "IN" ? "Add Cash In" : "Add Cash Out"}</Button>}
             />
           ) : (
-            <div className="space-y-2">
-              {data?.transactions.map((t) => (
-                <Card key={t.id} className="flex items-center gap-3 p-3 card-raised">
-                  <div className={cn("grid h-10 w-10 place-items-center rounded-xl", t.kind === "IN" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400")}>
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      {t.kind === "IN" ? <path d="M12 19V5 M5 12l7-7 7 7" /> : <path d="M12 5v14 M19 12l-7 7-7-7" />}
-                    </svg>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{t.reason || (t.kind === "IN" ? "Cash In" : "Cash Out")}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {formatDateTime(t.createdAt)} · {t.account === "CASH" ? "Cash" : t.account === "MOBILE" ? "Mobile" : "Bank"}
-                      {t.detail ? ` · ${subAccountName(t.account as PaymentMethod, t.detail)}` : ""}
+            <div className="mb-scroll max-h-[50vh] space-y-1 overflow-y-auto">
+              {data?.transactions.map((t) => {
+                const sourceColors: Record<string, string> = { "Sale": "bg-emerald-500/15 text-emerald-400", "Purchase": "bg-red-500/15 text-red-400", "Expense": "bg-amber-500/15 text-amber-400", "Manual": "bg-sky-500/15 text-sky-400" };
+                const sourceBase = (t.source || "").split(" #")[0];
+                const iconBg = sourceColors[sourceBase] || (t.kind === "IN" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400");
+                return (
+                  <div key={t.id} className="flex items-center gap-2 rounded-lg bg-card/40 px-2.5 py-2">
+                    <div className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-bold", iconBg)}>
+                      {t.kind === "IN" ? "IN" : "OUT"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold">{t.source}: {t.reason}</p>
+                      <p className="truncate text-[10px] text-muted-foreground">
+                        {formatDateTime(t.createdAt)} · {t.account === "CASH" ? "Cash" : t.account === "MOBILE" ? "Mobile" : "Bank"}
+                        {t.detail ? ` · ${subAccountName(t.account as PaymentMethod, t.detail)}` : ""}
+                        {t.userName ? ` · ${t.userName}` : ""}
+                      </p>
+                    </div>
+                    <p className={cn("shrink-0 text-xs font-bold tnum", t.kind === "IN" ? "text-emerald-400" : "text-red-400")}>
+                      {t.kind === "IN" ? "+" : "−"}{formatBirr(Math.abs(t.amount))}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className={cn("text-sm font-bold tnum", t.kind === "IN" ? "text-emerald-400" : "text-red-400")}>{t.kind === "IN" ? "+" : "−"}{formatBirr(Math.abs(t.amount))}</p>
-                    {t.detail ? (
-                      <Pill tone="muted" className="mt-0.5">{subAccountName(t.account as PaymentMethod, t.detail)}</Pill>
-                    ) : (
-                      <Pill tone="muted" className="mt-0.5">{t.account === "CASH" ? "Cash" : t.account === "MOBILE" ? "Mobile" : "Bank"}</Pill>
-                    )}
-                  </div>
-                </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </>

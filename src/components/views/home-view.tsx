@@ -44,6 +44,16 @@ interface DashboardData {
   recentSales: { number: string; type: string; total: number; totalKg: number; paymentMethod: string; paymentDetail: string | null; cashierName: string | null; itemCount: number; createdAt: string }[];
   debtsOutstanding: number;
   supplierBalance: number;
+  avgSale: number;
+  yesterdayRevenue: number;
+  yesterdayCount: number;
+  revenueChange: number;
+  refundsToday: number;
+  weekRevenue: number;
+  weekCount: number;
+  methodSplit: { method: string; revenue: number; pct: number }[];
+  wastageTodayKg: number;
+  wastageTodayCount: number;
 }
 
 async function fetchDashboard(): Promise<DashboardData> {
@@ -117,6 +127,28 @@ export function HomeView() {
         </div>
       </Card>
 
+      {/* ─── Quick Stats Row (world-standard metrics) ─── */}
+      <div className="mb-3 grid grid-cols-4 gap-1.5">
+        <Card className="card-raised bg-card p-2 text-center">
+          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Avg Sale</p>
+          <p className="mt-0.5 text-xs font-bold tnum">{formatBirr(data.avgSale, cur)}</p>
+        </Card>
+        <Card className="card-raised bg-card p-2 text-center">
+          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">vs Yesterday</p>
+          <p className={cn("mt-0.5 text-xs font-bold tnum", data.revenueChange > 0 ? "text-emerald-400" : data.revenueChange < 0 ? "text-red-400" : "text-muted-foreground")}>
+            {data.revenueChange > 0 ? "↑" : data.revenueChange < 0 ? "↓" : "—"} {Math.abs(data.revenueChange)}%
+          </p>
+        </Card>
+        <Card className="card-raised bg-card p-2 text-center">
+          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Week</p>
+          <p className="mt-0.5 text-xs font-bold tnum">{formatBirr(data.weekRevenue, cur)}</p>
+        </Card>
+        <Card className="card-raised bg-card p-2 text-center">
+          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Refunds</p>
+          <p className={cn("mt-0.5 text-xs font-bold tnum", data.refundsToday > 0 ? "text-red-400" : "text-muted-foreground")}>{data.refundsToday}</p>
+        </Card>
+      </div>
+
       {/* ─── Recovery — full width, clear labels ─── */}
       <div className="mb-3">
         <PurchaseRecoveryCard sales={data.flow.todayRevenue} purchaseCost={data.flow.purchaseAmount} cur={cur} />
@@ -137,6 +169,32 @@ export function HomeView() {
       {/* ─── Today's Purchases — animal-type breakdown ─── */}
       {data.todayPurchases.count > 0 && (
         <TodayPurchasesCard purchases={data.todayPurchases} cur={cur} onOpen={() => go("PURCHASES")} />
+      )}
+
+      {/* ─── Payment Split (compact % bar) ─── */}
+      {data.methodSplit.length > 0 && data.today.revenue > 0 && (
+        <Card className="mb-3 card-raised bg-card p-3">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Payment Split Today</p>
+          <div className="flex h-2.5 overflow-hidden rounded-full bg-muted/60">
+            {data.methodSplit.map((m) => {
+              const colors: Record<string, string> = { CASH: "bg-emerald-500", MOBILE: "bg-sky-500", BANK: "bg-violet-500", CREDIT: "bg-amber-500" };
+              return m.pct > 0 ? <div key={m.method} className={cn("h-full", colors[m.method] || "bg-muted")} style={{ width: `${m.pct}%` }} /> : null;
+            })}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-3 text-[10px]">
+            {data.methodSplit.map((m) => {
+              const colors: Record<string, string> = { CASH: "bg-emerald-400", MOBILE: "bg-sky-400", BANK: "bg-violet-400", CREDIT: "bg-amber-400" };
+              const labels: Record<string, string> = { CASH: "Cash", MOBILE: "Mobile", BANK: "Bank", CREDIT: "Credit" };
+              return (
+                <span key={m.method} className="flex items-center gap-1">
+                  <span className={cn("h-1.5 w-1.5 rounded-full", colors[m.method] || "bg-muted")} />
+                  <span className="text-muted-foreground">{labels[m.method] || m.method}</span>
+                  <span className="font-semibold tnum">{m.pct}%</span>
+                </span>
+              );
+            })}
+          </div>
+        </Card>
       )}
 
       {/* ─── Payment Methods ─── */}

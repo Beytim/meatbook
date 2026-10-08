@@ -20,7 +20,7 @@ export async function GET() {
   const todayWhere = { createdAt: { gte: today.from, lte: today.to }, status: "COMPLETED" };
   const todayRange = { createdAt: { gte: today.from, lte: today.to } };
 
-  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail, todayPurchases, todayExpensesAgg, todayTopProducts, recentSales] = await Promise.all([
+  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail, todayPurchases, todayExpensesAgg, todayTopProducts, recentSales, debtsAgg, supplierDebitAgg, supplierCreditAgg] = await Promise.all([
     db.sale.count({ where: todayWhere }),
     db.sale.aggregate({ where: todayWhere, _sum: { total: true, totalKg: true }, _count: true }),
     db.sale.aggregate({ where: { ...todayWhere, type: "TAKE_HOME" }, _sum: { total: true, totalKg: true }, _count: true }),
@@ -34,6 +34,11 @@ export async function GET() {
     db.saleItem.groupBy({ by: ["name"], where: { sale: todayWhere }, _sum: { total: true, kg: true }, _count: true }),
     // Recent sales (last 5)
     db.sale.findMany({ where: todayWhere, orderBy: { createdAt: "desc" }, take: 5, include: { items: true } }),
+    // Customer debts outstanding (all-time)
+    db.debt.aggregate({ where: { status: "OPEN" }, _sum: { amount: true, paid: true } }),
+    // Supplier balance (all-time: total debit - total credit)
+    db.ledgerEntry.aggregate({ where: { kind: "DEBIT" }, _sum: { amount: true } }),
+    db.ledgerEntry.aggregate({ where: { kind: "CREDIT" }, _sum: { amount: true } }),
   ]);
 
   // Build a tree per method from TODAY's sales only.
@@ -201,6 +206,9 @@ export async function GET() {
       itemCount: s.items.length,
       createdAt: s.createdAt,
     })),
+    // ─── Cross-module: customer debts + supplier balances ──────────
+    debtsOutstanding: Math.round((Number(debtsAgg._sum.amount ?? 0) - Number(debtsAgg._sum.paid ?? 0)) * 100) / 100,
+    supplierBalance: Math.round((Number(supplierDebitAgg._sum.amount ?? 0) - Number(supplierCreditAgg._sum.amount ?? 0)) * 100) / 100,
     // integrity check: tree sum must equal today's revenue
     _sync: { todayRevenue, treeSum, matched: Math.abs(todayRevenue - treeSum) < 0.01 },
   });

@@ -42,6 +42,8 @@ interface DashboardData {
   };
   topProducts: { name: string; revenue: number; kg: number; count: number }[];
   recentSales: { number: string; type: string; total: number; totalKg: number; paymentMethod: string; paymentDetail: string | null; cashierName: string | null; itemCount: number; createdAt: string }[];
+  debtsOutstanding: number;
+  supplierBalance: number;
 }
 
 async function fetchDashboard(): Promise<DashboardData> {
@@ -157,6 +159,24 @@ export function HomeView() {
       {data.recentSales.length > 0 && (
         <RecentActivityCard sales={data.recentSales} cur={cur} />
       )}
+
+      {/* ─── Debts + Supplier Balance (cross-module) ─── */}
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <Card className="card-raised bg-card p-3" onClick={() => go("CUSTOMER_DEBTS")}>
+          <button className="block w-full text-left">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Customer Debts</p>
+            <p className="mt-0.5 text-lg font-bold tnum leading-none text-amber-400">{formatBirr(data.debtsOutstanding, cur)}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">outstanding →</p>
+          </button>
+        </Card>
+        <Card className="card-raised bg-card p-3" onClick={() => go("SUPPLIER_LEDGER")}>
+          <button className="block w-full text-left">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Supplier Balance</p>
+            <p className="mt-0.5 text-lg font-bold tnum leading-none text-red-400">{formatBirr(data.supplierBalance, cur)}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">we owe →</p>
+          </button>
+        </Card>
+      </div>
 
       {/* Cash session */}
       {data.openSession && (

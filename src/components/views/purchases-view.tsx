@@ -41,7 +41,7 @@ interface PurchasesResp {
 }
 
 function paymentLabel(m: string) {
-  return m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : m === "BANK" ? "Bank" : m;
+  return m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : m === "BANK" ? "Bank" : m === "CREDIT" ? "Credit" : m;
 }
 
 export function PurchasesView() {
@@ -153,13 +153,23 @@ interface RowItem {
 function RecordPurchaseDialog({ open, onOpenChange, period: _period }: { open: boolean; onOpenChange: (o: boolean) => void; period: PeriodKey }) {
   const qc = useQueryClient();
   const [supplier, setSupplier] = React.useState("");
-  const [paymentMethod, setPaymentMethod] = React.useState<"CASH" | "MOBILE" | "BANK">("CASH");
+  const [paymentMethod, setPaymentMethod] = React.useState<"CASH" | "MOBILE" | "BANK" | "CREDIT">("CASH");
   const [paymentDetail, setPaymentDetail] = React.useState("");
   const [note, setNote] = React.useState("");
   const [rows, setRows] = React.useState<RowItem[]>(() => [{ key: "1", animalType: "OX", kg: "", amount: "" }]);
+  const [supplierId, setSupplierId] = React.useState("");
+  const [suppliers, setSuppliers] = React.useState<{ id: string; name: string }[]>([]);
+
+  const fetchSuppliers = React.useCallback(async () => {
+    try {
+      const r = await fetch("/api/meat/suppliers");
+      const d = await r.json();
+      setSuppliers(d.suppliers ?? []);
+    } catch { /* ignore */ }
+  }, []);
 
   function reset() {
-    setSupplier(""); setPaymentMethod("CASH"); setPaymentDetail(""); setNote("");
+    setSupplier(""); setPaymentMethod("CASH"); setPaymentDetail(""); setNote(""); setSupplierId("");
     setRows([{ key: "1", animalType: "OX", kg: "", amount: "" }]);
   }
 
@@ -181,10 +191,21 @@ function RecordPurchaseDialog({ open, onOpenChange, period: _period }: { open: b
           kg: parseFloat(r.kg) || 0,
           amount: parseFloat(r.amount) || 0,
         }));
+      // For credit purchases, resolve/create supplier if needed
+      let supId = supplierId;
+      if (paymentMethod === "CREDIT" && !supId && supplier.trim()) {
+        const sr = await fetch("/api/meat/suppliers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: supplier.trim() }),
+        });
+        const sd = await sr.json();
+        supId = sd.supplier.id;
+      }
       const r = await fetch("/api/meat/purchases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplier: supplier.trim() || undefined, note: note.trim() || undefined, paymentMethod, paymentDetail, items }),
+        body: JSON.stringify({ supplier: supplier.trim() || undefined, note: note.trim() || undefined, paymentMethod, paymentDetail, items, supplierId: paymentMethod === "CREDIT" ? supId : undefined }),
       });
       if (!r.ok) throw new Error("failed");
       return r.json();
@@ -194,6 +215,8 @@ function RecordPurchaseDialog({ open, onOpenChange, period: _period }: { open: b
       qc.invalidateQueries({ queryKey: ["purchases"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["money"] });
+      qc.invalidateQueries({ queryKey: ["suppliers"] });
+      qc.invalidateQueries({ queryKey: ["ledger"] });
       reset();
       onOpenChange(false);
     },
@@ -214,19 +237,32 @@ function RecordPurchaseDialog({ open, onOpenChange, period: _period }: { open: b
           </div>
           <div>
             <Label className="text-xs">Payment method</Label>
-            <div className="mt-1 grid grid-cols-3 gap-1.5">
-              {(["CASH", "MOBILE", "BANK"] as const).map((m) => (
-                <button key={m} type="button" onClick={() => { setPaymentMethod(m); setPaymentDetail(""); }}
+            <div className="mt-1 grid grid-cols-4 gap-1.5">
+              {(["CASH", "MOBILE", "BANK", "CREDIT"] as const).map((m) => (
+                <button key={m} type="button" onClick={() => { setPaymentMethod(m); setPaymentDetail(""); if (m === "CREDIT") fetchSuppliers(); }}
                   className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", paymentMethod === m ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-                  {m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : "Bank"}
+                  {m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : m === "BANK" ? "Bank" : "Credit"}
                 </button>
               ))}
             </div>
           </div>
-          {paymentMethod !== "CASH" && (
+          {paymentMethod !== "CASH" && paymentMethod !== "CREDIT" && (
             <div>
               <Label className="text-xs">{paymentMethod === "MOBILE" ? "Provider" : "Bank"}</Label>
               <div className="mt-1"><AccountProviderSelect method={paymentMethod} value={paymentDetail} onChange={setPaymentDetail} /></div>
+            </div>
+          )}
+          {paymentMethod === "CREDIT" && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">Buy on Credit — adds to supplier ledger</p>
+              {suppliers.length > 0 && (
+                <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}
+                  className="mb-1.5 h-8 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-xs">
+                  <option value="">— Select existing supplier —</option>
+                  {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              )}
+              <p className="text-[10px] text-muted-foreground">Supplier name above will be used if no existing supplier selected.</p>
             </div>
           )}
           <div>

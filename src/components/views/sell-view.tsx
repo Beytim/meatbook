@@ -30,7 +30,7 @@ interface CartItem {
 }
 
 type SaleType = "TAKE_HOME" | "EAT_HERE";
-type PaymentMethod = "CASH" | "MOBILE" | "BANK";
+type PaymentMethod = "CASH" | "MOBILE" | "BANK" | "CREDIT";
 
 async function fetchProducts(): Promise<{ products: Product[] }> {
   const r = await fetch("/api/meat/products");
@@ -49,6 +49,18 @@ export function SellView() {
   const [query, setQuery] = React.useState("");
   const [cartOpen, setCartOpen] = React.useState(false);
   const [lastSale, setLastSale] = React.useState<{ number: string; total: number } | null>(null);
+  // Credit sale: customer selector
+  const [customerId, setCustomerId] = React.useState("");
+  const [newCustomerName, setNewCustomerName] = React.useState("");
+  const [customers, setCustomers] = React.useState<{ id: string; name: string }[]>([]);
+
+  const fetchCustomers = React.useCallback(async () => {
+    try {
+      const r = await fetch("/api/meat/customers");
+      const d = await r.json();
+      setCustomers(d.customers ?? []);
+    } catch { /* ignore */ }
+  }, []);
 
   const products = (data?.products ?? []).filter((p) => p.active);
   const filtered = products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
@@ -92,15 +104,29 @@ export function SellView() {
 
   const checkout = useMutation({
     mutationFn: async () => {
+      // For credit sales, resolve/create the customer first
+      let custId = customerId;
+      if (payment === "CREDIT" && !custId && newCustomerName.trim()) {
+        const cr = await fetch("/api/meat/customers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newCustomerName.trim() }),
+        });
+        const cd = await cr.json();
+        custId = cd.customer.id;
+      }
       const r = await fetch("/api/meat/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: saleType,
-          paymentMethod: payment,
-          paymentDetail: payment === "CASH" ? null : paymentDetail || (payment === "MOBILE" ? "Telebirr" : "CBE"),
+          paymentMethod: payment === "CREDIT" ? "CREDIT" : payment,
+          paymentDetail: payment === "CASH" ? null : payment === "CREDIT" ? null : paymentDetail || (payment === "MOBILE" ? "Telebirr" : "CBE"),
           items: cart,
           cashierName: "Abebe Owner",
+          // Credit sale: pass customer info so the API creates a debt
+          creditCustomerId: payment === "CREDIT" ? custId : undefined,
+          creditCustomerName: payment === "CREDIT" ? (customers.find(c => c.id === custId)?.name || newCustomerName.trim()) : undefined,
         }),
       });
       if (!r.ok) throw new Error("checkout failed");
@@ -110,13 +136,16 @@ export function SellView() {
       setLastSale({ number: data.sale.number, total });
       setCart([]);
       setPaymentDetail("");
+      setCustomerId("");
+      setNewCustomerName("");
       setCartOpen(false);
-      // Invalidate EVERY module that reads sales so the whole app stays in sync.
+      // Invalidate EVERY module so the whole app stays in sync
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["sales"] });
       qc.invalidateQueries({ queryKey: ["money"] });
       qc.invalidateQueries({ queryKey: ["reports"] });
       qc.invalidateQueries({ queryKey: ["audit"] });
+      qc.invalidateQueries({ queryKey: ["debts"] });
       toast.success(`Sale #${data.sale.number} complete`);
     },
     onError: () => toast.error("Could not complete sale"),
@@ -287,27 +316,49 @@ export function SellView() {
               <span className="text-xl font-bold tnum text-primary">{formatBirr(total)}</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5">
-              {(["CASH", "MOBILE", "BANK"] as PaymentMethod[]).map((m) => (
+            <div className="grid grid-cols-4 gap-1.5">
+              {(["CASH", "MOBILE", "BANK", "CREDIT"] as PaymentMethod[]).map((m) => (
                 <button
                   key={m}
-                  onClick={() => { setPayment(m); if (m === "CASH") setPaymentDetail(""); }}
+                  onClick={() => { setPayment(m); setPaymentDetail(""); if (m === "CREDIT") fetchCustomers(); }}
                   className={cn(
                     "rounded-lg py-2 text-[11px] font-semibold tap-scale",
                     payment === m ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground"
                   )}
                 >
-                  {m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : "Bank"}
+                  {m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : m === "BANK" ? "Bank" : "Credit"}
                 </button>
               ))}
             </div>
 
-            {payment !== "CASH" && (
+            {payment !== "CASH" && payment !== "CREDIT" && (
               <div className="relative z-50">
                 <AccountProviderSelect
                   method={payment}
                   value={paymentDetail}
                   onChange={setPaymentDetail}
+                />
+              </div>
+            )}
+
+            {payment === "CREDIT" && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">Sell on Credit — creates debt</p>
+                {customers.length > 0 && (
+                  <select
+                    value={customerId}
+                    onChange={(e) => setCustomerId(e.target.value)}
+                    className="mb-1.5 h-8 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-xs"
+                  >
+                    <option value="">— Select existing customer —</option>
+                    {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                )}
+                <input
+                  value={newCustomerName}
+                  onChange={(e) => setNewCustomerName(e.target.value)}
+                  placeholder="…or type new customer name"
+                  className="h-8 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-xs"
                 />
               </div>
             )}

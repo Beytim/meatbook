@@ -51,10 +51,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { supplier, note, paymentMethod, paymentDetail, items, userName } = body as {
+  const { supplier, note, paymentMethod, paymentDetail, items, userName, supplierId } = body as {
     supplier?: string; note?: string; paymentMethod?: string; paymentDetail?: string;
     items: { productId?: string; animalType?: string; name?: string; kg: number; amount: number }[];
     userName?: string;
+    supplierId?: string;
   };
   if (!items || items.length === 0) return NextResponse.json({ error: "items required" }, { status: 400 });
 
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
       supplier: supplier || null,
       note: note || null,
       paymentMethod: method,
-      paymentDetail: method === "CASH" ? null : (paymentDetail || null),
+      paymentDetail: method === "CASH" || method === "CREDIT" ? null : (paymentDetail || null),
       total: Math.round(total * 100) / 100,
       userName: userName || "Abebe Owner",
       items: {
@@ -77,14 +78,30 @@ export async function POST(req: Request) {
             animalType: i.animalType || null,
             name: i.name || i.animalType || "Item",
             kg,
-            unitCost: kg > 0 ? Math.round((amount / kg) * 100) / 100 : 0, // derived, display only
-            total: amount, // manually-entered amount
+            unitCost: kg > 0 ? Math.round((amount / kg) * 100) / 100 : 0,
+            total: amount,
           };
         }),
       },
     },
     include: { items: true },
   });
-  await audit("PURCHASE_CREATE", `Purchase from ${supplier || "supplier"} · Br ${total.toFixed(2)}`, { name: userName }, { purchaseId: purchase.id });
+
+  // ─── INTEGRATION: Credit purchase → create supplier ledger DEBIT ──
+  if (method === "CREDIT" && supplierId) {
+    await db.ledgerEntry.create({
+      data: {
+        supplierId,
+        kind: "DEBIT",
+        amount: Math.round(total * 100) / 100,
+        purchaseId: purchase.id,
+        note: `Credit purchase — ${supplier || "supplier"}`,
+        userName: userName || "Abebe Owner",
+      },
+    });
+    await audit("LEDGER_DEBIT", `Credit purchase from ${supplier || "supplier"} · Br ${total.toFixed(2)}`, { name: userName }, { purchaseId: purchase.id });
+  }
+
+  await audit("PURCHASE_CREATE", `Purchase from ${supplier || "supplier"} · Br ${total.toFixed(2)}${method === "CREDIT" ? " (credit)" : ""}`, { name: userName }, { purchaseId: purchase.id });
   return NextResponse.json({ purchase });
 }

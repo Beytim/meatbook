@@ -52,13 +52,15 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { type, paymentMethod, paymentDetail, items, cashierName, note } = body as {
+  const { type, paymentMethod, paymentDetail, items, cashierName, note, creditCustomerId, creditCustomerName } = body as {
     type: "TAKE_HOME" | "EAT_HERE";
-    paymentMethod: "CASH" | "MOBILE" | "BANK";
+    paymentMethod: "CASH" | "MOBILE" | "BANK" | "CREDIT";
     paymentDetail?: string;
     items: { productId: string; name: string; unitPrice: number; kg: number; total: number }[];
     cashierName?: string;
     note?: string;
+    creditCustomerId?: string;
+    creditCustomerName?: string;
   };
 
   if (!items || items.length === 0) {
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
       number,
       type: type === "EAT_HERE" ? "EAT_HERE" : "TAKE_HOME",
       paymentMethod: method,
-      paymentDetail: method === "CASH" ? null : (paymentDetail || null),
+      paymentDetail: method === "CASH" || method === "CREDIT" ? null : (paymentDetail || null),
       total: Math.round(total * 100) / 100,
       totalKg: Math.round(totalKg * 100) / 100,
       status: "COMPLETED",
@@ -94,7 +96,24 @@ export async function POST(req: Request) {
     include: { items: true },
   });
 
-  await audit("SALE_CREATE", `Sale #${String(number).padStart(6, "0")} · Br ${total.toFixed(2)}`, { name: cashierName }, { saleId: sale.id, total });
+  // ─── INTEGRATION: Credit sale → create a debt ──────────────────────
+  if (method === "CREDIT" && creditCustomerId) {
+    await db.debt.create({
+      data: {
+        customerId: creditCustomerId,
+        saleId: sale.id,
+        saleNumber: sale.number,
+        amount: Math.round(total * 100) / 100,
+        paid: 0,
+        status: "OPEN",
+        note: `Credit sale #${String(sale.number).padStart(6, "0")}${creditCustomerName ? ` — ${creditCustomerName}` : ""}`,
+        userName: cashierName || "Abebe Owner",
+      },
+    });
+    await audit("DEBT_CREATE", `Credit sale #${String(number).padStart(6, "0")} → debt for ${creditCustomerName || "customer"} · Br ${total.toFixed(2)}`, { name: cashierName }, { saleId: sale.id });
+  }
+
+  await audit("SALE_CREATE", `Sale #${String(number).padStart(6, "0")} · Br ${total.toFixed(2)}${method === "CREDIT" ? " (credit)" : ""}`, { name: cashierName }, { saleId: sale.id, total });
 
   return NextResponse.json({
     sale: { ...sale, number: String(sale.number).padStart(6, "0") },

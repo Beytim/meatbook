@@ -32,7 +32,8 @@ async function fetchMoney(period: PeriodKey): Promise<MoneyData> {
 
 export function MoneyView() {
   const [period, setPeriod] = React.useState<PeriodKey>("TODAY");
-  const [tab, setTab] = React.useState<"IN" | "OUT">("IN");
+  const [tab, setTab] = React.useState<"IN" | "OUT" | "ALL">("ALL");
+  const [accountFilter, setAccountFilter] = React.useState<"ALL" | "CASH" | "MOBILE" | "BANK">("ALL");
   const { data, isLoading } = useQuery({ queryKey: ["money", period], queryFn: () => fetchMoney(period) });
   const [moveOpen, setMoveOpen] = React.useState(false);
 
@@ -51,21 +52,28 @@ export function MoneyView() {
         <AccountTreeCard method="BANK" label="Bank" tree={data?.tree.BANK ?? { total: 0, subAccounts: [] }} tone="violet" defaultOpen />
       </div>
 
-      {/* Cash In / Out tabs */}
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <button onClick={() => setTab("IN")} className={cn("rounded-xl py-2.5 text-sm font-bold tap-scale", tab === "IN" ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30" : "bg-muted/60 text-muted-foreground")}>
-          ↓ Cash In
-        </button>
-        <button onClick={() => setTab("OUT")} className={cn("rounded-xl py-2.5 text-sm font-bold tap-scale", tab === "OUT" ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : "bg-muted/60 text-muted-foreground")}>
-          ↑ Cash Out
-        </button>
+      {/* Direction filter: All / In / Out */}
+      <div className="mb-2 grid grid-cols-3 gap-1.5">
+        <button onClick={() => setTab("ALL")} className={cn("rounded-lg py-2 text-xs font-bold tap-scale", tab === "ALL" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>All</button>
+        <button onClick={() => setTab("IN")} className={cn("rounded-lg py-2 text-xs font-bold tap-scale", tab === "IN" ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30" : "bg-muted/60 text-muted-foreground")}>↓ In</button>
+        <button onClick={() => setTab("OUT")} className={cn("rounded-lg py-2 text-xs font-bold tap-scale", tab === "OUT" ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : "bg-muted/60 text-muted-foreground")}>↑ Out</button>
       </div>
 
-      {/* Period tabs */}
+      {/* Account filter: All / Cash / Mobile / Bank */}
+      <div className="mb-3 flex gap-1.5">
+        {(["ALL", "CASH", "MOBILE", "BANK"] as const).map((a) => (
+          <button key={a} onClick={() => setAccountFilter(a)}
+            className={cn("rounded-full px-3 py-1 text-[11px] font-semibold tap-scale", accountFilter === a ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+            {a === "ALL" ? "All" : a === "CASH" ? "💵 Cash" : a === "MOBILE" ? "📱 Mobile" : "🏦 Bank"}
+          </button>
+        ))}
+      </div>
+
+      {/* Period tabs + Add button */}
       <div className="mb-4 flex items-center justify-between gap-2">
         <PeriodTabs value={period} onChange={setPeriod} periods={["TODAY", "YESTERDAY", "7D", "30D", "MONTH", "YEAR", "ALL"]} />
         <Button size="sm" onClick={() => setMoveOpen(true)} className="shrink-0 bg-primary text-primary-foreground">
-          {tab === "IN" ? "Add Cash In" : "Add Cash Out"}
+          Cash In/Out
         </Button>
       </div>
 
@@ -80,49 +88,68 @@ export function MoneyView() {
             <FlowTile label="Net Cash Flow" value={data?.flow.net ?? 0} tone={((data?.flow.net ?? 0)) >= 0 ? "good" : "bad"} sub={periodLabel(period)} />
           </div>
 
-          {/* Unified Transactions — sales + purchases + expenses + moves */}
+          {/* Unified Transactions — filtered by direction + account */}
           <div className="mb-2 flex items-center justify-between px-1">
-            <h2 className="text-sm font-semibold">All Transactions</h2>
-            <span className="text-[10px] text-muted-foreground">{data?.transactions.length ?? 0} entries</span>
+            <h2 className="text-sm font-semibold">Transactions</h2>
+            <span className="text-[10px] text-muted-foreground">
+              {(() => {
+                const filtered = (data?.transactions ?? []).filter((t) => {
+                  if (tab !== "ALL" && t.kind !== tab) return false;
+                  if (accountFilter !== "ALL" && t.account !== accountFilter) return false;
+                  return true;
+                });
+                return filtered.length + " entries";
+              })()}
+            </span>
           </div>
-          {data?.transactions.length === 0 ? (
-            <EmptyState
-              icon={<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18" /></svg>}
-              title="No transactions in this period."
-              description="Sales, purchases, expenses, and manual moves will appear here."
-              action={<Button onClick={() => setMoveOpen(true)} className="bg-primary text-primary-foreground">{tab === "IN" ? "Add Cash In" : "Add Cash Out"}</Button>}
-            />
-          ) : (
-            <div className="mb-scroll max-h-[50vh] space-y-1 overflow-y-auto">
-              {data?.transactions.map((t) => {
-                const sourceColors: Record<string, string> = { "Sale": "bg-emerald-500/15 text-emerald-400", "Purchase": "bg-red-500/15 text-red-400", "Expense": "bg-amber-500/15 text-amber-400", "Manual": "bg-sky-500/15 text-sky-400" };
-                const sourceBase = (t.source || "").split(" #")[0];
-                const iconBg = sourceColors[sourceBase] || (t.kind === "IN" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400");
-                return (
-                  <div key={t.id} className="flex items-center gap-2 rounded-lg bg-card/40 px-2.5 py-2">
-                    <div className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-bold", iconBg)}>
-                      {t.kind === "IN" ? "IN" : "OUT"}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold">{t.source}: {t.reason}</p>
-                      <p className="truncate text-[10px] text-muted-foreground">
-                        {formatDateTime(t.createdAt)} · {t.account === "CASH" ? "Cash" : t.account === "MOBILE" ? "Mobile" : "Bank"}
-                        {t.detail ? ` · ${subAccountName(t.account as PaymentMethod, t.detail)}` : ""}
-                        {t.userName ? ` · ${t.userName}` : ""}
+          {(() => {
+            const filtered = (data?.transactions ?? []).filter((t) => {
+              if (tab !== "ALL" && t.kind !== tab) return false;
+              if (accountFilter !== "ALL" && t.account !== accountFilter) return false;
+              return true;
+            });
+            if (filtered.length === 0) {
+              return (
+                <EmptyState
+                  icon={<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18" /></svg>}
+                  title="No transactions match."
+                  description="Try a different filter, period, or record a Cash In/Out."
+                  action={<Button onClick={() => setMoveOpen(true)} className="bg-primary text-primary-foreground">Cash In/Out</Button>}
+                />
+              );
+            }
+            return (
+              <div className="mb-scroll max-h-[50vh] space-y-1 overflow-y-auto">
+                {filtered.map((t) => {
+                  const sourceColors: Record<string, string> = { "Sale": "bg-emerald-500/15 text-emerald-400", "Purchase": "bg-red-500/15 text-red-400", "Expense": "bg-amber-500/15 text-amber-400", "Manual": "bg-sky-500/15 text-sky-400" };
+                  const sourceBase = (t.source || "").split(" #")[0];
+                  const iconBg = sourceColors[sourceBase] || (t.kind === "IN" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400");
+                  return (
+                    <div key={t.id} className="flex items-center gap-2 rounded-lg bg-card/40 px-2.5 py-2">
+                      <div className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-bold", iconBg)}>
+                        {t.kind === "IN" ? "IN" : "OUT"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold">{t.source}: {t.reason}</p>
+                        <p className="truncate text-[10px] text-muted-foreground">
+                          {formatDateTime(t.createdAt)} · {t.account === "CASH" ? "Cash" : t.account === "MOBILE" ? "Mobile" : "Bank"}
+                          {t.detail ? ` · ${subAccountName(t.account as PaymentMethod, t.detail)}` : ""}
+                          {t.userName ? ` · ${t.userName}` : ""}
+                        </p>
+                      </div>
+                      <p className={cn("shrink-0 text-xs font-bold tnum", t.kind === "IN" ? "text-emerald-400" : "text-red-400")}>
+                        {t.kind === "IN" ? "+" : "−"}{formatBirr(Math.abs(t.amount))}
                       </p>
                     </div>
-                    <p className={cn("shrink-0 text-xs font-bold tnum", t.kind === "IN" ? "text-emerald-400" : "text-red-400")}>
-                      {t.kind === "IN" ? "+" : "−"}{formatBirr(Math.abs(t.amount))}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </>
       )}
 
-      <MoveDialog open={moveOpen} onOpenChange={setMoveOpen} direction={tab} period={period} />
+      <MoveDialog open={moveOpen} onOpenChange={setMoveOpen} direction={tab === "ALL" ? "IN" : tab} period={period} />
     </div>
   );
 }

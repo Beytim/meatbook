@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { formatBirr, formatDate, cn, colorFromString } from "@/lib/utils";
+import { formatBirr, formatKg, formatDate, cn, colorFromString } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Pill, EmptyState, SearchInput } from "@/components/app/primitives";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import { Switch } from "@/components/ui/switch";
 
 interface Product {
   id: string; name: string; emoji: string; priceTakeHome: number; priceEatHere: number; active: boolean; createdAt: string;
+  todaySales: number; todayKg: number; todayCount: number;
+  allTimeSales: number; allTimeKg: number; allTimeCount: number;
 }
 
 async function fetchProducts(): Promise<{ products: Product[] }> {
@@ -24,61 +26,98 @@ async function fetchProducts(): Promise<{ products: Product[] }> {
   return r.json();
 }
 
+type SortMode = "name" | "today" | "alltime";
+
 export function ProductsView() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
   const [query, setQuery] = React.useState("");
   const [editing, setEditing] = React.useState<Product | null>(null);
   const [creating, setCreating] = React.useState(false);
+  const [sort, setSort] = React.useState<SortMode>("name");
 
-  const products = (data?.products ?? []).filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
-  const activeCount = (data?.products ?? []).filter((p) => p.active).length;
+  const allProducts = data?.products ?? [];
+  const filtered = allProducts.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sort === "today") return b.todaySales - a.todaySales;
+    if (sort === "alltime") return b.allTimeSales - a.allTimeSales;
+    return a.name.localeCompare(b.name);
+  });
+
+  const activeCount = allProducts.filter((p) => p.active).length;
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 pb-28 pt-3">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Products</h1>
-          <p className="text-sm text-muted-foreground">{activeCount} active · {data?.products.length ?? 0} total</p>
+          <p className="text-sm text-muted-foreground">{activeCount} active · {allProducts.length} total</p>
         </div>
         <Button onClick={() => setCreating(true)} className="bg-primary text-primary-foreground meat-glow">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-          Add Product
+          Add
         </Button>
       </div>
 
-      <SearchInput value={query} onChange={setQuery} placeholder="Search products by name…" className="mb-4" />
+      {/* Sort toggle */}
+      <div className="mb-3 flex gap-1.5">
+        {([
+          { id: "name" as SortMode, label: "A-Z" },
+          { id: "today" as SortMode, label: "Today" },
+          { id: "alltime" as SortMode, label: "All-time" },
+        ]).map((s) => (
+          <button key={s.id} onClick={() => setSort(s.id)}
+            className={cn("rounded-full px-3 py-1.5 text-xs font-semibold tap-scale", sort === s.id ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      <SearchInput value={query} onChange={setQuery} placeholder="Search products by name…" className="mb-3" />
 
       {isLoading ? (
         <div className="space-y-2.5">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted/50" />)}</div>
-      ) : products.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <EmptyState title="No products found" description="Add your first meat product to start selling." action={<Button onClick={() => setCreating(true)}>Add Product</Button>} />
       ) : (
-        <div className="space-y-2.5">
-          {products.map((p) => (
+        <div className="space-y-2">
+          {sorted.map((p, idx) => (
             <Card key={p.id} className="overflow-hidden card-raised">
-              <button onClick={() => setEditing(p)} className="block w-full p-4 text-left tap-scale">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br text-xl", colorFromString(p.name))}>{p.emoji}</div>
-                    <div>
-                      <p className="text-sm font-bold">{p.name}</p>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <Pill tone={p.active ? "good" : "muted"}>{p.active ? "Active" : "Inactive"}</Pill>
-                        <span className="text-[10px] text-muted-foreground">Added {formatDate(p.createdAt)}</span>
+              <button onClick={() => setEditing(p)} className="block w-full p-3 text-left tap-scale">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    {/* Rank badge when sorted by sales */}
+                    {(sort === "today" || sort === "alltime") && (
+                      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">{idx + 1}</span>
+                    )}
+                    <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-lg", colorFromString(p.name))}>{p.emoji}</div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-bold">{p.name}</p>
+                        <Pill tone={p.active ? "good" : "muted"} className="!px-1.5 !py-0">{p.active ? "●" : "○"}</Pill>
                       </div>
+                      <p className="text-[10px] text-muted-foreground tnum">TH {formatBirr(p.priceTakeHome)} · EH {formatBirr(p.priceEatHere)}</p>
                     </div>
                   </div>
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className="rounded-xl bg-amber-500/10 p-2.5 ring-1 ring-amber-500/15">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">Take Home · OUT</p>
-                    <p className="mt-0.5 text-base font-bold tnum">{formatBirr(p.priceTakeHome)}</p>
+
+                {/* Inline sales stats */}
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
+                  <div className={cn("rounded-lg px-2.5 py-1.5", p.todaySales > 0 ? "bg-emerald-500/8" : "bg-muted/20")}>
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Today</p>
+                    <div className="flex items-baseline gap-1.5">
+                      <p className={cn("text-sm font-bold tnum", p.todaySales > 0 ? "text-emerald-400" : "text-muted-foreground")}>{formatBirr(p.todaySales)}</p>
+                      {p.todayCount > 0 && <p className="text-[10px] text-muted-foreground tnum">{p.todayCount}× · {formatKg(p.todayKg)}</p>}
+                    </div>
                   </div>
-                  <div className="rounded-xl bg-emerald-500/10 p-2.5 ring-1 ring-emerald-500/15">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400">Eat Here · IN</p>
-                    <p className="mt-0.5 text-base font-bold tnum">{formatBirr(p.priceEatHere)}</p>
+                  <div className={cn("rounded-lg px-2.5 py-1.5", p.allTimeSales > 0 ? "bg-sky-500/8" : "bg-muted/20")}>
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">All-time</p>
+                    <div className="flex items-baseline gap-1.5">
+                      <p className={cn("text-sm font-bold tnum", p.allTimeSales > 0 ? "text-sky-400" : "text-muted-foreground")}>{formatBirr(p.allTimeSales)}</p>
+                      {p.allTimeCount > 0 && <p className="text-[10px] text-muted-foreground tnum">{p.allTimeCount}× · {formatKg(p.allTimeKg)}</p>}
+                    </div>
                   </div>
                 </div>
               </button>
@@ -142,6 +181,7 @@ function ProductDialog({ product, open, onOpenChange, onSaved }: { product: Prod
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{product ? "Edit Product" : "Add Product"}</DialogTitle>
+          <DialogDescription className="sr-only">{product ? "Edit product details." : "Add a new meat product."}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div className="flex gap-3">
@@ -151,7 +191,7 @@ function ProductDialog({ product, open, onOpenChange, onSaved }: { product: Prod
             </div>
             <div className="flex-1">
               <Label className="text-xs">Product name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ribs" className="mt-1" />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ribs" className="mt-1" autoFocus />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

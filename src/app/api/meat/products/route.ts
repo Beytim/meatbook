@@ -4,7 +4,43 @@ import { audit } from "@/lib/api-helpers";
 
 export async function GET() {
   const products = await db.product.findMany({ orderBy: { name: "asc" } });
-  return NextResponse.json({ products });
+
+  // Today's sales per product (for inline stats on product cards)
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayRange = { createdAt: { gte: todayStart, lte: now } };
+
+  const todayStats = await db.saleItem.groupBy({
+    by: ["productId"],
+    where: { sale: { status: "COMPLETED", ...todayRange } },
+    _sum: { total: true, kg: true },
+    _count: true,
+  });
+
+  // All-time sales per product
+  const allTimeStats = await db.saleItem.groupBy({
+    by: ["productId"],
+    where: { sale: { status: "COMPLETED" } },
+    _sum: { total: true, kg: true },
+    _count: true,
+  });
+
+  // Merge stats into products
+  const enriched = products.map((p) => {
+    const today = todayStats.find((s) => s.productId === p.id);
+    const allTime = allTimeStats.find((s) => s.productId === p.id);
+    return {
+      ...p,
+      todaySales: today ? Number(today._sum.total ?? 0) : 0,
+      todayKg: today ? Number(today._sum.kg ?? 0) : 0,
+      todayCount: today ? today._count : 0,
+      allTimeSales: allTime ? Number(allTime._sum.total ?? 0) : 0,
+      allTimeKg: allTime ? Number(allTime._sum.kg ?? 0) : 0,
+      allTimeCount: allTime ? allTime._count : 0,
+    };
+  });
+
+  return NextResponse.json({ products: enriched });
 }
 
 export async function POST(req: Request) {

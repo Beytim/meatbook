@@ -180,7 +180,7 @@ export function SellView() {
             {cart.map((i) => (
               <div key={i.productId} className="flex items-center gap-2 px-2 py-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{i.name}</p>
+                  <p className="text-sm font-semibold leading-tight">{i.name}</p>
                   <p className="text-[11px] text-muted-foreground tnum">{formatBirr(i.unitPrice)} × {i.kg.toFixed(2)} kg</p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -240,6 +240,7 @@ export function SellView() {
           {/* Bank/Mobile provider dropdown */}
           {payment !== "CASH" && payment !== "CREDIT" && (
             <div className="relative z-50">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{payment === "MOBILE" ? "Provider" : "Bank"}</p>
               <AccountProviderSelect method={payment} value={paymentDetail} onChange={setPaymentDetail} />
             </div>
           )}
@@ -247,14 +248,14 @@ export function SellView() {
           {/* Cash received + change calculator */}
           {payment === "CASH" && (
             <div className="rounded-lg bg-emerald-500/5 p-2.5 ring-1 ring-emerald-500/20">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-muted-foreground">Received</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-muted-foreground shrink-0">Received</span>
                 <input
                   value={cashReceived}
                   onChange={(e) => setCashReceived(e.target.value)}
                   inputMode="decimal"
                   placeholder={String(total)}
-                  className="h-8 flex-1 rounded-lg border border-border/60 bg-background/60 px-2 text-xs tnum text-right"
+                  className="h-8 w-32 rounded-lg border border-border/60 bg-background/60 px-2 text-xs tnum text-right"
                 />
               </div>
               {cashReceivedNum > 0 && (

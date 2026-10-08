@@ -210,7 +210,7 @@ export function HomeView() {
 
       {/* ─── Top Products Today ─── */}
       {data.topProducts.length > 0 && (
-        <TopProductsCard products={data.topProducts} cur={cur} />
+        <TopProductsCard products={data.topProducts} cur={cur} onViewAll={() => go("PRODUCT_SALES")} />
       )}
 
       {/* ─── Recent Activity ─── */}
@@ -447,11 +447,14 @@ function TodayPurchasesCard({ purchases, cur, onOpen }: {
 // ════════════════════════════════════════════════════════════════════════
 // TOP PRODUCTS — which meats are driving today's revenue
 // ════════════════════════════════════════════════════════════════════════
-function TopProductsCard({ products, cur }: { products: DashboardData["topProducts"]; cur: string }) {
+function TopProductsCard({ products, cur, onViewAll }: { products: DashboardData["topProducts"]; cur: string; onViewAll: () => void }) {
   const maxRevenue = Math.max(...products.map((p) => p.revenue), 1);
   return (
     <Card className="mb-3 card-raised bg-card p-3.5">
-      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Top Products Today</p>
+      <div className="mb-2.5 flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Top Products Today</p>
+        <button onClick={onViewAll} className="text-[10px] font-medium text-primary">View All →</button>
+      </div>
       <div className="space-y-2">
         {products.map((p, i) => (
           <div key={p.name} className="flex items-center gap-2.5">

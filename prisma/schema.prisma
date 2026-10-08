@@ -129,12 +129,16 @@ model Expense {
   note        String?
   paymentMethod String @default("CASH")
   paymentDetail String? // sub-account: Telebirr, Mpesa, CBE, United, Zemen...
+  // ONE_TIME: hits fully on the day recorded (transport, supplies)
+  // MONTHLY: amortized daily (rent, electricity, water, salaries) — ÷30 per day
+  frequency   String   @default("ONE_TIME") // ONE_TIME | MONTHLY
   userId      String?
   userName    String?
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
   @@index([category])
+  @@index([frequency])
 }
 
 // ─── Cash sessions (open/close drawer) ────────────────────────────────

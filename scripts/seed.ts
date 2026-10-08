@@ -59,9 +59,9 @@ async function main() {
   // A couple of expenses + a purchase so money-out also shows sub-account detail.
   await db.expense.createMany({
     data: [
-      { category: "Rent", amount: 4000, note: "Shop rent — October", paymentMethod: "BANK", paymentDetail: "CBE", userName: "Abebe Owner" },
-      { category: "Electricity", amount: 850, note: "Meter top-up", paymentMethod: "MOBILE", paymentDetail: "Telebirr", userName: "Sara Manager" },
-      { category: "Transport", amount: 300, note: "Fuel", paymentMethod: "CASH", userName: "Dawit Cashier" },
+      { category: "Rent", amount: 4000, note: "Shop rent — October", paymentMethod: "BANK", paymentDetail: "CBE", frequency: "MONTHLY", userName: "Abebe Owner" },
+      { category: "Electricity", amount: 850, note: "Meter top-up", paymentMethod: "MOBILE", paymentDetail: "Telebirr", frequency: "MONTHLY", userName: "Sara Manager" },
+      { category: "Transport", amount: 300, note: "Fuel", paymentMethod: "CASH", frequency: "ONE_TIME", userName: "Dawit Cashier" },
     ],
   });
 

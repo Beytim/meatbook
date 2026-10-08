@@ -262,6 +262,7 @@ function RecordExpenseDialog({
   const [paymentMethod, setPaymentMethod] = React.useState<"CASH" | "MOBILE" | "BANK">("CASH");
   const [paymentDetail, setPaymentDetail] = React.useState("");
   const [note, setNote] = React.useState("");
+  const [frequency, setFrequency] = React.useState<"ONE_TIME" | "MONTHLY">("ONE_TIME");
 
   function reset() {
     setCategory("");
@@ -269,6 +270,7 @@ function RecordExpenseDialog({
     setPaymentMethod("CASH");
     setPaymentDetail("");
     setNote("");
+    setFrequency("ONE_TIME");
   }
 
   const canSave = !!category.trim() && !!amount && (parseFloat(amount) || 0) > 0;
@@ -283,6 +285,7 @@ function RecordExpenseDialog({
           amount: Number(amount),
           paymentMethod,
           paymentDetail,
+          frequency,
           note: note.trim() || undefined,
         }),
       });
@@ -367,6 +370,26 @@ function RecordExpenseDialog({
               </div>
             </div>
           )}
+
+          <div>
+            <Label className="text-xs">Frequency</Label>
+            <div className="mt-1 grid grid-cols-2 gap-1.5">
+              <button type="button" onClick={() => setFrequency("ONE_TIME")}
+                className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", frequency === "ONE_TIME" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+                One-time
+              </button>
+              <button type="button" onClick={() => setFrequency("MONTHLY")}
+                className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", frequency === "MONTHLY" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+                Monthly (÷30 daily)
+              </button>
+            </div>
+            {frequency === "MONTHLY" && (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Monthly expense: full amount is paid now, but only 1/30 hits daily profit.
+                E.g. Br 4,000 rent = Br 133.33/day in the dashboard.
+              </p>
+            )}
+          </div>
 
           <div>
             <Label className="text-xs">Note (optional)</Label>

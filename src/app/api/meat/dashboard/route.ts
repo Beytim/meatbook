@@ -29,7 +29,7 @@ export async function GET() {
   const yesterdayRange = { createdAt: { gte: yesterday.from, lte: yesterday.to } };
   const createdAtRange = todayRange;
 
-  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail, todayPurchases, todayExpensesAgg, todayTopProducts, recentSales, debtsAgg, supplierDebitAgg, supplierCreditAgg, yesterdayAgg, monthAgg, weekAgg, methodSplit, wastageToday] = await Promise.all([
+  const [todaySales, todaySalesAgg, takeHomeAgg, eatHereAgg, lastSale, openSession, todayByMethodDetail, todayPurchases, oneTimeExpensesAgg, monthlyExpensesAgg, todayTopProducts, recentSales, debtsAgg, supplierDebitAgg, supplierCreditAgg, yesterdayAgg, monthAgg, weekAgg, methodSplit, wastageToday] = await Promise.all([
     db.sale.count({ where: todayWhere }),
     db.sale.aggregate({ where: todayWhere, _sum: { total: true, totalKg: true }, _count: true }),
     db.sale.aggregate({ where: { ...todayWhere, type: "TAKE_HOME" }, _sum: { total: true, totalKg: true }, _count: true }),
@@ -38,7 +38,9 @@ export async function GET() {
     db.cashSession.findFirst({ where: { status: "OPEN" }, orderBy: { openedAt: "desc" } }),
     db.sale.groupBy({ by: ["paymentMethod", "paymentDetail"], where: todayWhere, _sum: { total: true } }),
     db.purchase.findMany({ where: todayRange, include: { items: true } }),
-    db.expense.aggregate({ where: todayRange, _sum: { amount: true } }),
+    db.expense.aggregate({ where: { ...todayRange, frequency: "ONE_TIME" }, _sum: { amount: true } }),
+    // Monthly expenses recorded this month (for daily amortization: ÷30)
+    db.expense.aggregate({ where: { frequency: "MONTHLY", createdAt: { gte: monthStart } }, _sum: { amount: true } }),
     // Top products today (by revenue)
     db.saleItem.groupBy({ by: ["name"], where: { sale: todayWhere }, _sum: { total: true, kg: true }, _count: true }),
     // Recent sales (last 5)
@@ -105,9 +107,12 @@ export async function GET() {
   }
   purchaseAmount = Math.round(purchaseAmount * 100) / 100;
 
-  const todayExpenses = Number(todayExpensesAgg._sum.amount ?? 0);
-  // Realized profit today = sales - purchases - expenses
-  // (purchases = cost of the animals bought today; sales = revenue from cuts sold today)
+  // Expenses: one-time (full amount today) + monthly (÷30 daily amortization)
+  const oneTimeExpenses = Number(oneTimeExpensesAgg._sum.amount ?? 0);
+  const monthlyExpensesTotal = Number(monthlyExpensesAgg._sum.amount ?? 0);
+  const monthlyDailyShare = Math.round((monthlyExpensesTotal / 30) * 100) / 100; // daily amortized
+  const todayExpenses = Math.round((oneTimeExpenses + monthlyDailyShare) * 100) / 100;
+  // Realized profit today = sales - purchases - expenses (one-time + daily share of monthly)
   const profit = Math.round((todayRevenue - purchaseAmount - todayExpenses) * 100) / 100;
 
   // Profit status for color coding:
@@ -187,6 +192,7 @@ export async function GET() {
       purchaseKg: Math.round(purchaseKg * 100) / 100,
       purchaseAmount,
       todayExpenses,
+      expenseBreakdown: { oneTime: oneTimeExpenses, monthlyTotal: monthlyExpensesTotal, monthlyDailyShare },
       todayRevenue,
       profit,
       profitMargin: Math.round(profitMargin * 1000) / 1000,

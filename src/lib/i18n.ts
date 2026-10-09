@@ -322,8 +322,8 @@ export const dict: Dict = {
   "cashControl.note": { en: "Note (optional)", am: "ማስታወሻ (አማራጭ)" },
 
   // Customer Debts
-  "debts.title": { en: "Customer Debts", am: "የደንበኛ እዳ" },
-  "debts.subtitle": { en: "Money owed to the shop by customers", am: "ተወዳዳሪዎች ያላቸው እዳ" },
+  "debts.title": { en: "Customer Debts", am: "የደንበኞች ዕዳ" },
+  "debts.subtitle": { en: "Money owed to the shop by customers", am: "ደንበኞች ለሱቅ ያላቸው እዳ" },
   "debts.add": { en: "Add Debt", am: "እዳ ጨምር" },
   "debts.totalOutstanding": { en: "Total Outstanding", am: "ጠቅላላ ያልተከፈለ" },
   "debts.outstanding": { en: "Outstanding", am: "ያልተከፈለ" },

@@ -23,7 +23,7 @@ import {
   PeriodTabs, SearchInput, EmptyState, Pill,
   PageScaffold, ListSkeleton, Money, Kg,
 } from "@/components/app/primitives";
-import { ReceiptDialog } from "@/components/views/receipts-view";
+import { ReceiptDialog } from "@/components/app/receipt-dialog";
 import { useLang } from "@/components/lang-provider";
 import { t as translate, type Lang } from "@/lib/i18n";
 

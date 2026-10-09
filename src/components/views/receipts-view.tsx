@@ -23,6 +23,10 @@ import {
 import { useLang } from "@/components/lang-provider";
 import { t as translate, type Lang } from "@/lib/i18n";
 
+// Re-export ReceiptDialog from shared location (backward compat)
+export { ReceiptDialog } from "@/components/app/receipt-dialog";
+import { ReceiptDialog } from "@/components/app/receipt-dialog";
+
 // ─── Types ──────────────────────────────────────────────────────────────
 interface SaleItem { name: string; unitPrice: number; kg: number; total: number; }
 type SaleStatus = "COMPLETED" | "VOIDED" | "REFUNDED";
@@ -54,7 +58,7 @@ interface Settings {
   currency: string;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────
+// ─── Helper ─────────────────────────────────────────────────────────────
 function paymentLabelT(method: string, detail?: string | null, lang: Lang = "en"): string {
   const m = (method || "").toUpperCase();
   if (m === "CASH") return translate("sell.cash", lang);
@@ -264,180 +268,3 @@ function ReceiptCard({ sale, onOpen, lang }: { sale: Sale; onOpen: () => void; l
   );
 }
 
-// ─── Thermal receipt dialog (shared with Refund/Void) ────────────────────
-export function ReceiptDialog({
-  id,
-  onClose,
-  settings,
-  lang,
-}: {
-  id: string | null;
-  onClose: () => void;
-  settings?: Settings;
-  lang?: Lang;
-}) {
-  const { t } = useLang();
-  const effectiveLang: Lang = lang ?? "en";
-  const { data, isLoading } = useQuery<{ sale: Sale }>({
-    queryKey: ["sale", id],
-    queryFn: async () => {
-      const r = await fetch(`/api/meat/sales/${id}`);
-      if (!r.ok) throw new Error("failed");
-      return r.json();
-    },
-    enabled: !!id,
-  });
-  const sale = data?.sale;
-
-  const onShare = React.useCallback(async () => {
-    if (!sale) return;
-    const text = buildReceiptText(sale, settings, effectiveLang);
-    try {
-      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        await navigator.share({ title: `${t("receipts.receipt")} #${sale.number}`, text });
-        return;
-      }
-    } catch {
-      // user cancelled or share failed — fall through to clipboard
-    }
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
-        toast.success(t("receipts.share"));
-        return;
-      }
-    } catch {
-      // ignore
-    }
-    toast.error(t("saleFailed"));
-  }, [sale, settings, effectiveLang, t]);
-
-  const onReprint = React.useCallback(() => {
-    toast.success(`${t("receipts.reprint")} #${sale?.number ?? ""}`);
-  }, [sale, t]);
-
-  return (
-    <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md p-4 sm:p-5">
-        <DialogHeader className="text-center">
-          <DialogTitle className="flex items-center justify-center gap-2 text-base">
-            <span>{t("receipts.receipt")}</span>
-            {sale && <span className="tnum">#{sale.number}</span>}
-          </DialogTitle>
-        </DialogHeader>
-        {isLoading || !sale ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            {t("common.loading")}
-          </div>
-        ) : (
-          <>
-
-            <div className="max-h-[60vh] overflow-y-auto px-1">
-              <div className="mx-auto max-w-[320px] rounded-xl bg-background p-4 font-mono text-[12px] leading-relaxed text-foreground ring-1 ring-border/60">
-                <div className="text-center">
-                  <p className="text-[13px] font-bold tracking-tight">
-                    {settings?.receiptHeader || settings?.shopName || "Kera Fresh Meat Shop"}
-                  </p>
-                  {settings?.shopPhone && (
-                    <p className="text-[11px] text-muted-foreground">{settings.shopPhone}</p>
-                  )}
-                  {settings?.shopAddress && (
-                    <p className="text-[11px] text-muted-foreground">{settings.shopAddress}</p>
-                  )}
-                </div>
-                <div className="my-2 border-t border-dashed border-border/70" />
-                <div className="space-y-0.5">
-                  <Row k={`${t("salesHistory.sale")} #`} v={`#${sale.number}`} />
-                  <Row k={t("common.date")} v={formatDateTime(sale.createdAt)} />
-                  <Row k={t("common.cashier")} v={sale.cashierName || "—"} />
-                  <Row k={t("common.type")} v={sale.type === "TAKE_HOME" ? t("sell.takeHome") : t("sell.eatHere")} />
-                  <Row k={t("common.payment")} v={paymentLabelT(sale.paymentMethod, sale.paymentDetail, effectiveLang)} />
-                </div>
-                <div className="my-2 border-t border-dashed border-border/70" />
-                <div className="space-y-1">
-                  {sale.items.map((it, i) => (
-                    <div key={i}>
-                      <p className="truncate font-medium">{it.name}</p>
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                        <span className="tnum">
-                          {formatKg(it.kg)} × {formatBirr(it.unitPrice)}
-                        </span>
-                        <span className="tnum font-medium text-foreground">{formatBirr(it.total)}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {sale.items.length === 0 && (
-                    <p className="text-center text-muted-foreground">{t("sell.emptyCart")}</p>
-                  )}
-                </div>
-                <div className="my-2 border-t border-dashed border-border/70" />
-                <div className="flex items-center justify-between text-[14px] font-bold">
-                  <span>{t("common.total").toUpperCase()}</span>
-                  <span className="tnum">{formatBirr(sale.total)}</span>
-                </div>
-                <div className="my-2 border-t border-dashed border-border/70" />
-                <p className="text-center text-[11px] text-muted-foreground">
-                  {settings?.receiptFooter || "Thank you! Meat sold by kg. Keep refrigerated."}
-                </p>
-                <p className="mt-1 text-center text-[10px] text-muted-foreground">
-                  {formatTime(sale.createdAt)} · {sale.cashierName || t("common.cashier")}
-                </p>
-              </div>
-            </div>
-
-            <Separator className="my-1" />
-
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={onReprint} className="w-full">
-                <svg viewBox="0 0 24 24" className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" />
-                </svg>
-                {t("receipts.reprint")}
-              </Button>
-              <Button onClick={onShare} className="w-full bg-primary text-primary-foreground">
-                <svg viewBox="0 0 24 24" className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-                  <path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5" />
-                </svg>
-                {t("receipts.share")}
-              </Button>
-            </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="text-muted-foreground">{k}</span>
-      <span className="text-right font-medium">{v}</span>
-    </div>
-  );
-}
-
-// Build a plain-text version of the receipt for sharing / clipboard.
-function buildReceiptText(sale: Sale, settings: Settings | undefined, lang: Lang): string {
-  const header = settings?.receiptHeader || settings?.shopName || "Kera Fresh Meat Shop";
-  const footer = settings?.receiptFooter || "Thank you! Meat sold by kg. Keep refrigerated.";
-  const lines: string[] = [];
-  lines.push(header);
-  lines.push("=".repeat(28));
-  lines.push(`${translate("salesHistory.sale", lang)} #   : #${sale.number}`);
-  lines.push(`${translate("common.date", lang)}      : ${formatDateTime(sale.createdAt)}`);
-  lines.push(`${translate("common.cashier", lang)}   : ${sale.cashierName || "—"}`);
-  lines.push(`${translate("common.type", lang)}      : ${sale.type === "TAKE_HOME" ? translate("sell.takeHome", lang) : translate("sell.eatHere", lang)}`);
-  lines.push(`${translate("common.payment", lang)}   : ${paymentLabelT(sale.paymentMethod, sale.paymentDetail, lang)}`);
-  lines.push("-".repeat(28));
-  for (const it of sale.items) {
-    lines.push(`${it.name}`);
-    lines.push(`  ${formatKg(it.kg)} x ${formatBirr(it.unitPrice)} = ${formatBirr(it.total)}`);
-  }
-  lines.push("-".repeat(28));
-  lines.push(`${translate("common.total", lang).toUpperCase()}     : ${formatBirr(sale.total)}`);
-  lines.push("=".repeat(28));
-  lines.push(footer);
-  return lines.join("\n");
-}

@@ -19,6 +19,7 @@ import {
   PeriodTabs, SearchInput, EmptyState, StatTile, Pill,
   PageScaffold, ListSkeleton, Money, Kg, FilterSelect,
 } from "@/components/app/primitives";
+import { ReceiptDialog as SharedReceiptDialog } from "@/components/app/receipt-dialog";
 import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -195,7 +196,7 @@ export function SalesHistoryView() {
         </div>
       )}
 
-      <ReceiptDialog id={openId} onClose={() => setOpenId(null)} statusLabel={statusLabel} paymentLabel={paymentLabel} />
+      <SharedReceiptDialog id={openId} onClose={() => setOpenId(null)} showActions />
     </PageScaffold>
   );
 }
@@ -236,120 +237,6 @@ function SaleRow({ sale, onOpen, statusLabel, paymentLabel }: { sale: Sale; onOp
 }
 
 // ─── Receipt dialog with void/refund ────────────────────────────────────
-function ReceiptDialog({ id, onClose, statusLabel, paymentLabel }: { id: string | null; onClose: () => void; statusLabel: Record<SaleStatus, string>; paymentLabel: (m: string, d?: string | null) => string }) {
-  const { go } = useNav();
-  const { t } = useLang();
-  const { data, isLoading } = useQuery<{ sale: Sale }>({
-    queryKey: ["sale", id],
-    queryFn: async () => { const r = await fetch(`/api/meat/sales/${id}`); if (!r.ok) throw new Error("failed"); return r.json(); },
-    enabled: !!id,
-  });
-  const sale = data?.sale;
-
-  const [confirmAction, setConfirmAction] = React.useState<"VOID" | "REFUND" | null>(null);
-  const [actionNote, setActionNote] = React.useState("");
-
-  const act = useMutation({
-    mutationFn: async () => {
-      if (!id || !confirmAction) return;
-      const r = await fetch(`/api/meat/sales/${id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: confirmAction, note: actionNote.trim() || undefined }),
-      });
-      if (!r.ok) throw new Error("failed");
-      return r.json();
-    },
-    onSuccess: () => {
-      toast.success(confirmAction === "VOID" ? t("refundVoid.voided") : t("refundVoid.refunded"));
-      setConfirmAction(null); setActionNote("");
-      onClose();
-    },
-    onError: () => toast.error(t("saleFailed")),
-  });
-
-  return (
-    <Dialog open={!!id} onOpenChange={(o) => { if (!o) { onClose(); setConfirmAction(null); setActionNote(""); } }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex flex-wrap items-center gap-2">
-            <span>{t("receipts.receipt")}</span>
-            {sale && <span className="tnum">#{sale.number}</span>}
-            {sale && <Pill tone={STATUS_TONE[sale.status]}>{statusLabel[sale.status]}</Pill>}
-          </DialogTitle>
-          <DialogDescription className="sr-only">{t("receipts.receipt")} #{sale?.number}.</DialogDescription>
-        </DialogHeader>
-        {isLoading || !sale ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
-        ) : (
-          <>
-            <div className="space-y-3">
-              {/* Meta */}
-              <div className="grid grid-cols-2 gap-2">
-                <MetaCell label={t("common.date")} value={formatDateTime(sale.createdAt)} />
-                <MetaCell label={t("common.cashier")} value={sale.cashierName || "—"} />
-                <MetaCell label={t("common.type")} value={sale.type === "TAKE_HOME" ? `${t("sell.takeHome")} · ${t("common.out")}` : `${t("sell.eatHere")} · ${t("common.in")}`} tone={sale.type === "TAKE_HOME" ? "amber" : "emerald"} />
-                <MetaCell label={t("common.payment")} value={paymentLabel(sale.paymentMethod, sale.paymentDetail)} />
-              </div>
-
-              {/* Items */}
-              <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40">
-                <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <span>{t("common.item")}</span><span>{t("common.total")}</span>
-                </div>
-                {sale.items.map((it, i) => (
-                  <div key={i} className="border-b border-border/40 px-3 py-2 last:border-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{it.name}</p>
-                        <p className="text-[11px] text-muted-foreground tnum">{formatBirr(it.unitPrice)}/kg · <Kg kg={it.kg} /></p>
-                      </div>
-                      <p className="text-sm font-semibold tnum"><Money amount={it.total} /></p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Grand total */}
-              <div className="flex items-center justify-between rounded-xl bg-primary/10 px-3 py-2.5 ring-1 ring-primary/20">
-                <span className="text-sm font-semibold">{t("sell.grandTotal")}</span>
-                <span className="text-lg font-bold tnum"><Money amount={sale.total} /></span>
-              </div>
-            </div>
-
-            {/* Void/Refund actions — only for completed sales */}
-            {sale.status === "COMPLETED" && !confirmAction && (
-              <div className="flex gap-2 pt-1">
-                <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => go("RECEIPTS")}>{t("receipts.reprint")}</Button>
-                <Button variant="outline" size="sm" className="flex-1 text-xs text-red-400 hover:text-red-300" onClick={() => setConfirmAction("VOID")}>{t("refundVoid.void")}</Button>
-                <Button variant="outline" size="sm" className="flex-1 text-xs text-amber-400 hover:text-amber-300" onClick={() => setConfirmAction("REFUND")}>{t("refundVoid.refund")}</Button>
-              </div>
-            )}
-
-            {/* Confirm action */}
-            {confirmAction && (
-              <div className="rounded-xl border border-border/60 p-3 space-y-2">
-                <p className="text-sm font-semibold text-red-400">
-                  {confirmAction === "VOID" ? t("refundVoid.voidConfirm") : t("refundVoid.refundConfirm")}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  #{sale.number} · {formatBirr(sale.total)}. {t("refundVoid.irreversible")}.
-                </p>
-                <Input value={actionNote} onChange={(e) => setActionNote(e.target.value)} placeholder={t("refundVoid.reason")} className="h-9 text-xs" />
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="text-xs" onClick={() => { setConfirmAction(null); setActionNote(""); }}>{t("common.cancel")}</Button>
-                  <Button variant="destructive" size="sm" className="flex-1 text-xs" onClick={() => act.mutate()} disabled={act.isPending}>
-                    {act.isPending ? t("common.loading") : `${t("common.confirm")} ${confirmAction === "VOID" ? t("refundVoid.void") : t("refundVoid.refund")}`}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function MetaCell({ label, value, tone }: { label: string; value: string; tone?: "amber" | "emerald" }) {
   const toneCls = tone === "amber" ? "text-amber-400" : tone === "emerald" ? "text-emerald-400" : "text-foreground";
   return (

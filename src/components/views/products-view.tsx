@@ -5,7 +5,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { formatBirr, formatKg, formatDate, cn, colorFromString } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Pill, EmptyState, SearchInput } from "@/components/app/primitives";
+import { Pill, EmptyState, SearchInput, FilterSelect } from "@/components/app/primitives";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -62,23 +62,19 @@ export function ProductsView() {
         </Button>
       </div>
 
-      {/* Sort toggle — simple and clear */}
+      {/* Sort — compact dropdown */}
       <div className="mb-3 flex items-center gap-2">
         <span className="text-[11px] text-muted-foreground">{t("common.type")}:</span>
-        <div className="flex gap-1.5">
-          <button onClick={() => setSort("name")}
-            className={cn("rounded-full px-3 py-1 text-xs font-semibold tap-scale", sort === "name" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {t("products.name")}
-          </button>
-          <button onClick={() => setSort("today")}
-            className={cn("rounded-full px-3 py-1 text-xs font-semibold tap-scale", sort === "today" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {t("products.todaySales")}
-          </button>
-          <button onClick={() => setSort("alltime")}
-            className={cn("rounded-full px-3 py-1 text-xs font-semibold tap-scale", sort === "alltime" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {t("products.allTimeSales")}
-          </button>
-        </div>
+        <FilterSelect
+          value={sort}
+          onChange={(v) => setSort(v as SortMode)}
+          options={[
+            { value: "name", label: t("products.name") },
+            { value: "today", label: t("products.todaySales") },
+            { value: "alltime", label: t("products.allTimeSales") },
+          ]}
+          className="flex-1"
+        />
       </div>
 
       <SearchInput value={query} onChange={setQuery} placeholder={`${t("common.search")}…`} className="mb-3" />

@@ -123,7 +123,7 @@ export function Kg({ kg, className, muted }: { kg: number; className?: string; m
   return <span className={cn("tnum", muted && "text-muted-foreground", className)}>{formatKg(kg)}</span>;
 }
 
-// ─── Period tab bar ─────────────────────────────────────────────────────
+// ─── Period selector (compact dropdown) ─────────────────────────────────
 import type { PeriodKey } from "@/lib/utils";
 import { periodLabel } from "@/lib/utils";
 
@@ -141,21 +141,49 @@ export function PeriodTabs({
   className?: string;
 }) {
   return (
-    <div className={cn("flex gap-1 overflow-x-auto no-scrollbar", className)}>
-      {periods.map((p) => (
-        <button
-          key={p}
-          onClick={() => onChange(p)}
-          className={cn(
-            "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors tap-scale",
-            value === p
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-          )}
-        >
-          {periodLabel(p)}
-        </button>
-      ))}
+    <div className={cn("relative", className)}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as PeriodKey)}
+        className="h-9 w-full cursor-pointer appearance-none rounded-lg border border-border/60 bg-card/80 px-3 pr-9 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/15"
+      >
+        {periods.map((p) => (
+          <option key={p} value={p} className="bg-card text-foreground">{periodLabel(p)}</option>
+        ))}
+      </select>
+      <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    </div>
+  );
+}
+
+// ─── Filter select (styled dropdown matching app theme) ──────────────────
+export function FilterSelect({
+  value,
+  onChange,
+  options,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  className?: string;
+}) {
+  return (
+    <div className={cn("relative", className)}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-9 w-full cursor-pointer appearance-none rounded-lg border border-border/60 bg-card/80 px-3 pr-9 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/15"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value} className="bg-card text-foreground">{o.label}</option>
+        ))}
+      </select>
+      <svg viewBox="0 0 24 24" className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m6 9 6 6 6-6" />
+      </svg>
     </div>
   );
 }

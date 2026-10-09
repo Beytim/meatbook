@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { PeriodTabs, SearchInput, EmptyState, Pill, PageScaffold, ListSkeleton, Money } from "@/components/app/primitives";
+import { PeriodTabs, SearchInput, EmptyState, Pill, PageScaffold, ListSkeleton, Money, FilterSelect } from "@/components/app/primitives";
 import { AccountProviderSelect } from "@/components/app/account-provider-select";
 import type { PaymentMethod } from "@/lib/accounts";
 import { useLang } from "@/components/lang-provider";
@@ -85,14 +85,17 @@ export function CustomerDebtsView() {
         </div>
       </Card>
 
-      {/* Filter tabs */}
-      <div className="mb-3 flex gap-1.5">
-        {(["OPEN", "SETTLED", "ALL"] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={cn("rounded-full px-3 py-1.5 text-xs font-semibold tap-scale", filter === f ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {f === "OPEN" ? t("debts.outstanding") : f === "SETTLED" ? t("debts.settled") : t("debts.all")}
-          </button>
-        ))}
+      {/* Status filter — compact dropdown */}
+      <div className="mb-3">
+        <FilterSelect
+          value={filter}
+          onChange={(v) => setFilter(v as "OPEN" | "SETTLED" | "ALL")}
+          options={[
+            { value: "OPEN", label: t("debts.outstanding") },
+            { value: "SETTLED", label: t("debts.settled") },
+            { value: "ALL", label: t("debts.all") },
+          ]}
+        />
       </div>
 
       <SearchInput value={q} onChange={setQ} placeholder={`${t("common.search")}…`} className="mb-3" />

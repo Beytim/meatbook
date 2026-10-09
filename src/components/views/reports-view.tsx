@@ -98,15 +98,15 @@ export function ReportsView() {
         />
       </div>
 
-      {/* Category tabs (horizontal scroll) */}
-      <div className="-mx-4 mb-5 overflow-x-auto px-4 no-scrollbar">
-        <div className="flex gap-1.5">
+      {/* Category tabs (horizontal scroll) — compact */}
+      <div className="-mx-4 mb-4 overflow-x-auto px-4 no-scrollbar">
+        <div className="flex gap-1">
           {CATEGORIES.map((c) => (
             <button
               key={c}
               onClick={() => setCat(c)}
               className={cn(
-                "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold tap-scale",
+                "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold tap-scale",
                 cat === c
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted/60 text-muted-foreground",

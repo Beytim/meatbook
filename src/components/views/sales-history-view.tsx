@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import {
   PeriodTabs, SearchInput, EmptyState, StatTile, Pill,
-  PageScaffold, ListSkeleton, Money, Kg,
+  PageScaffold, ListSkeleton, Money, Kg, FilterSelect,
 } from "@/components/app/primitives";
 import { useLang } from "@/components/lang-provider";
 
@@ -143,24 +143,29 @@ export function SalesHistoryView() {
         </Card>
       )}
 
-      {/* Status filter */}
-      <div className="mb-2 flex gap-1.5">
-        {(["ALL", "COMPLETED", "VOIDED", "REFUNDED"] as const).map((s) => (
-          <button key={s} onClick={() => setStatusFilter(s)}
-            className={cn("rounded-full px-3 py-1 text-[11px] font-semibold tap-scale", statusFilter === s ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {s === "ALL" ? t("common.all") : statusLabel[s]}
-          </button>
-        ))}
-      </div>
-
-      {/* Payment filter */}
-      <div className="mb-3 flex gap-1.5">
-        {(["ALL", "CASH", "MOBILE", "BANK", "CREDIT"] as const).map((p) => (
-          <button key={p} onClick={() => setPayFilter(p)}
-            className={cn("rounded-full px-3 py-1 text-[11px] font-semibold tap-scale", payFilter === p ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {p === "ALL" ? t("salesHistory.allPay") : p === "CASH" ? t("sell.cash") : p === "MOBILE" ? t("sell.mobile") : p === "BANK" ? t("sell.bank") : t("sell.credit")}
-          </button>
-        ))}
+      {/* Status + Payment filters — compact dropdowns side by side */}
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <FilterSelect
+          value={statusFilter}
+          onChange={(v) => setStatusFilter(v as "ALL" | SaleStatus)}
+          options={[
+            { value: "ALL", label: t("common.all") },
+            { value: "COMPLETED", label: statusLabel.COMPLETED },
+            { value: "VOIDED", label: statusLabel.VOIDED },
+            { value: "REFUNDED", label: statusLabel.REFUNDED },
+          ]}
+        />
+        <FilterSelect
+          value={payFilter}
+          onChange={(v) => setPayFilter(v as "ALL" | "CASH" | "MOBILE" | "BANK" | "CREDIT")}
+          options={[
+            { value: "ALL", label: t("salesHistory.allPay") },
+            { value: "CASH", label: t("sell.cash") },
+            { value: "MOBILE", label: t("sell.mobile") },
+            { value: "BANK", label: t("sell.bank") },
+            { value: "CREDIT", label: t("sell.credit") },
+          ]}
+        />
       </div>
 
       <SearchInput value={q} onChange={setQ} placeholder={`${t("common.search")}…`} className="mb-3" />

@@ -5,7 +5,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { formatBirr, cn, formatDateTime, type PeriodKey, periodLabel } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { PeriodTabs, EmptyState, Pill } from "@/components/app/primitives";
+import { PeriodTabs, EmptyState, Pill, FilterSelect } from "@/components/app/primitives";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -61,14 +61,18 @@ export function MoneyView() {
         <button onClick={() => setTab("OUT")} className={cn("rounded-lg py-2 text-xs font-bold tap-scale", tab === "OUT" ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : "bg-muted/60 text-muted-foreground")}>↑ {t("money.moneyOut")}</button>
       </div>
 
-      {/* Account filter: All / Cash / Mobile / Bank */}
-      <div className="mb-3 flex gap-1.5">
-        {(["ALL", "CASH", "MOBILE", "BANK"] as const).map((a) => (
-          <button key={a} onClick={() => setAccountFilter(a)}
-            className={cn("rounded-full px-3 py-1 text-[11px] font-semibold tap-scale", accountFilter === a ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {a === "ALL" ? t("common.all") : a === "CASH" ? `💵 ${t("money.cash")}` : a === "MOBILE" ? `📱 ${t("money.mobile")}` : `🏦 ${t("money.bank")}`}
-          </button>
-        ))}
+      {/* Account filter: All / Cash / Mobile / Bank — compact dropdown */}
+      <div className="mb-3">
+        <FilterSelect
+          value={accountFilter}
+          onChange={(v) => setAccountFilter(v as "ALL" | "CASH" | "MOBILE" | "BANK")}
+          options={[
+            { value: "ALL", label: t("common.all") },
+            { value: "CASH", label: `💵 ${t("money.cash")}` },
+            { value: "MOBILE", label: `📱 ${t("money.mobile")}` },
+            { value: "BANK", label: `🏦 ${t("money.bank")}` },
+          ]}
+        />
       </div>
 
       {/* Period tabs + Add button */}

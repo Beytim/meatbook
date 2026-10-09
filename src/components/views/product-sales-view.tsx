@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNav } from "@/lib/nav";
+import { useLang } from "@/components/lang-provider";
 import {
   formatBirr, formatKg, cn,
   type PeriodKey, periodLabel,
@@ -63,6 +64,7 @@ async function fetchSales(period: PeriodKey): Promise<SalesResp> {
 // ─── View ───────────────────────────────────────────────────────────────
 export function ProductSalesView() {
   const { back } = useNav();
+  const { t } = useLang();
   const [period, setPeriod] = React.useState<PeriodKey>("7D");
   const [typeFilter, setTypeFilter] = React.useState<TypeFilter>("ALL");
   const [query, setQuery] = React.useState("");
@@ -172,23 +174,23 @@ export function ProductSalesView() {
 
       {/* Type filter toggle */}
       <div className="mb-4 grid grid-cols-3 gap-1.5">
-        {(["ALL", "TAKE_HOME", "EAT_HERE"] as TypeFilter[]).map((t) => {
-          const active = typeFilter === t;
+        {(["ALL", "TAKE_HOME", "EAT_HERE"] as TypeFilter[]).map((tf) => {
+          const active = typeFilter === tf;
           return (
             <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
+              key={tf}
+              onClick={() => setTypeFilter(tf)}
               className={cn(
                 "rounded-xl py-2 text-xs font-semibold tap-scale",
-                active && t === "ALL" && "bg-primary text-primary-foreground",
-                active && t === "TAKE_HOME" &&
+                active && tf === "ALL" && "bg-primary text-primary-foreground",
+                active && tf === "TAKE_HOME" &&
                   "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30",
-                active && t === "EAT_HERE" &&
+                active && tf === "EAT_HERE" &&
                   "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30",
                 !active && "bg-muted/60 text-muted-foreground",
               )}
             >
-              {t === "ALL" ? "All" : t === "TAKE_HOME" ? "Take Home" : "Eat Here"}
+              {tf === "ALL" ? t("common.all") : tf === "TAKE_HOME" ? t("home.takeHome") : t("home.eatHere")}
             </button>
           );
         })}
@@ -220,20 +222,20 @@ export function ProductSalesView() {
 
       {/* Mini stats */}
       <div className="mb-4 grid grid-cols-3 gap-2.5">
-        <StatTile label="Revenue" value={<Money amount={periodRevenue} />} tone="primary" />
+        <StatTile label={t("salesHistory.revenue")} value={<Money amount={periodRevenue} />} tone="primary" />
         <StatTile
-          label="Sales Count"
+          label={t("salesHistory.sales")}
           value={<span className="tnum">{periodSales}</span>}
           tone="default"
         />
-        <StatTile label="Kg Sold" value={<Kg kg={periodKg} />} tone="default" />
+        <StatTile label={t("salesHistory.totalKg")} value={<Kg kg={periodKg} />} tone="default" />
       </div>
 
       {/* Bar chart */}
       {chartData.length > 0 && (
         <Card className="mb-5 p-4 card-raised">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Top Products by Revenue</h3>
+            <h3 className="text-sm font-semibold">{t("home.topProducts")}</h3>
             <span className="text-[11px] text-muted-foreground">
               {periodLabel(period)}
             </span>
@@ -291,7 +293,7 @@ export function ProductSalesView() {
             </svg>
           }
           title="No products sold in this period."
-          description="Try a wider period or a different Take Home / Eat Here filter."
+          description="Try a wider period or a different filter."
         />
       ) : (
         <div className="space-y-2.5">
@@ -306,6 +308,7 @@ export function ProductSalesView() {
 
 // ─── Product card ───────────────────────────────────────────────────────
 function ProductCard({ p }: { p: ProductAgg }) {
+  const { t } = useLang();
   const avgPricePerKg = p.kg > 0 ? Math.round((p.revenue / p.kg) * 100) / 100 : 0;
   return (
     <Card className="p-3.5 card-raised">
@@ -322,14 +325,14 @@ function ProductCard({ p }: { p: ProductAgg }) {
       </div>
       <div className="mt-2.5 grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-amber-500/10 p-2 ring-1 ring-amber-500/15">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">Take Home · OUT</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">{t("home.takeHome")} · {t("common.out")}</p>
           <p className="mt-0.5 text-sm font-bold tnum"><Money amount={p.takeHome.revenue} /></p>
-          <p className="text-[10px] text-muted-foreground tnum">{p.takeHome.count} sales · {formatKg(p.takeHome.kg)}</p>
+          <p className="text-[10px] text-muted-foreground tnum">{p.takeHome.count} {p.takeHome.count === 1 ? t("home.sales") : t("salesHistory.salesPlural")} · {formatKg(p.takeHome.kg)}</p>
         </div>
         <div className="rounded-lg bg-emerald-500/10 p-2 ring-1 ring-emerald-500/15">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400">Eat Here · IN</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400">{t("home.eatHere")} · {t("common.in")}</p>
           <p className="mt-0.5 text-sm font-bold tnum"><Money amount={p.eatHere.revenue} /></p>
-          <p className="text-[10px] text-muted-foreground tnum">{p.eatHere.count} sales · {formatKg(p.eatHere.kg)}</p>
+          <p className="text-[10px] text-muted-foreground tnum">{p.eatHere.count} {p.eatHere.count === 1 ? t("home.sales") : t("salesHistory.salesPlural")} · {formatKg(p.eatHere.kg)}</p>
         </div>
       </div>
     </Card>

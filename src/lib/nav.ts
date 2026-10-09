@@ -8,7 +8,6 @@ export type ViewId =
   | "PRODUCTS"
   | "MONEY"
   | "SALES_HISTORY"
-  | "PRODUCT_SALES"
   | "PURCHASES"
   | "WASTAGE"
   | "EXPENSES"
@@ -40,7 +39,6 @@ export const PRIMARY_VIEWS: ViewId[] = ["HOME", "SELL", "PRODUCTS", "MONEY"];
 // maps each "more" view to which primary tab it belongs under (for highlight)
 export const MORE_VIEWS: ViewId[] = [
   "SALES_HISTORY",
-  "PRODUCT_SALES",
   "PURCHASES",
   "WASTAGE",
   "EXPENSES",
@@ -96,7 +94,6 @@ export function activePrimary(view: ViewId): ViewId {
   if (PRIMARY_VIEWS.includes(view)) return view;
   switch (view) {
     case "SALES_HISTORY":
-    case "PRODUCT_SALES":
     case "REPORTS":
       return "HOME";
     case "PURCHASES":

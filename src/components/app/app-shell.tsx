@@ -34,7 +34,6 @@ const VIEW_MAP: Record<ViewId, React.ComponentType> = {
   PRODUCTS: ProductsView,
   MONEY: MoneyView,
   SALES_HISTORY: dynamic(() => import("@/components/views/sales-history-view").then((m) => m.SalesHistoryView), { loading }),
-  PRODUCT_SALES: dynamic(() => import("@/components/views/product-sales-view").then((m) => m.ProductSalesView), { loading }),
   PURCHASES: PurchasesView,
   WASTAGE: WastageView,
   CUSTOMER_DEBTS: CustomerDebtsView,

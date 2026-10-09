@@ -13,7 +13,6 @@ const MORE_GROUPS: { titleKey: string; items: { id: ViewId; labelKey: string; ic
     titleKey: "more.salesRecords",
     items: [
       { id: "SALES_HISTORY", labelKey: "salesHistory.title", descKey: "salesHistory.subtitle", icon: <Ico path="M3 3v18h18 M7 14l3-3 3 2 4-5" /> },
-      { id: "PRODUCT_SALES", labelKey: "home.productSales", descKey: "home.productSales", icon: <Ico path="M4 20V10 M10 20V4 M16 20v-7 M22 20H2" /> },
     ],
   },
   {

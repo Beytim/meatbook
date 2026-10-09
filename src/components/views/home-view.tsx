@@ -213,7 +213,7 @@ export function HomeView() {
 
       {/* ─── Top Products Today ─── */}
       {data.topProducts.length > 0 && (
-        <TopProductsCard products={data.topProducts} cur={cur} onViewAll={() => go("PRODUCT_SALES")} t={t} />
+        <TopProductsCard products={data.topProducts} cur={cur} onViewAll={() => go("REPORTS")} t={t} />
       )}
 
       {/* ─── Recent Activity ─── */}

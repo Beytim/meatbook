@@ -338,61 +338,170 @@ function PaymentMethodRow({
 // ════════════════════════════════════════════════════════════════════════
 // PRODUCTS
 // ════════════════════════════════════════════════════════════════════════
+// ─── Products Report (enhanced with Take Home/Eat Here breakdown) ──────
+// Fetches sales data client-side (same as old Product Sales view) and
+// aggregates per product with type sub-breakdowns.
+interface ProductAgg {
+  name: string;
+  revenue: number;
+  kg: number;
+  sales: number;
+  avgPricePerKg: number;
+  takeHome: { revenue: number; count: number; kg: number };
+  eatHere: { revenue: number; count: number; kg: number };
+}
+
 function ProductsReport({ data }: { data: ReportsData }) {
   const { t } = useLang();
-  const top = data.products.slice(0, 8);
-  const max = Math.max(...top.map((p) => p.revenue), 1);
+  const [typeFilter, setTypeFilter] = React.useState<"ALL" | "TAKE_HOME" | "EAT_HERE">("ALL");
+  const [searchQ, setSearchQ] = React.useState("");
+
+  // Fetch sales for this period (client-side aggregation, same as old Product Sales view)
+  const { data: salesData, isLoading: salesLoading } = useQuery({
+    queryKey: ["sales", "PRODUCTS_REPORT", data.period],
+    queryFn: async () => {
+      const r = await fetch(`/api/meat/sales?period=${data.period}`);
+      if (!r.ok) throw new Error("failed");
+      return r.json() as Promise<{ sales: { status: string; type: string; items: { name: string; total: number; kg: number }[] }[] }>;
+    },
+  });
+
+  // Aggregate per product
+  const products = React.useMemo<ProductAgg[]>(() => {
+    const map = new Map<string, ProductAgg>();
+    for (const s of salesData?.sales ?? []) {
+      if (s.status !== "COMPLETED") continue;
+      if (typeFilter !== "ALL" && s.type !== typeFilter) continue;
+      const isTH = s.type === "TAKE_HOME";
+      for (const it of s.items) {
+        let cur = map.get(it.name);
+        if (!cur) {
+          cur = { name: it.name, revenue: 0, kg: 0, sales: 0, avgPricePerKg: 0,
+            takeHome: { revenue: 0, count: 0, kg: 0 }, eatHere: { revenue: 0, count: 0, kg: 0 } };
+          map.set(it.name, cur);
+        }
+        cur.revenue += it.total;
+        cur.kg += it.kg;
+        cur.sales += 1;
+        if (isTH) { cur.takeHome.revenue += it.total; cur.takeHome.kg += it.kg; cur.takeHome.count += 1; }
+        else { cur.eatHere.revenue += it.total; cur.eatHere.kg += it.kg; cur.eatHere.count += 1; }
+      }
+    }
+    const arr = Array.from(map.values());
+    for (const p of arr) p.avgPricePerKg = p.kg > 0 ? Math.round((p.revenue / p.kg) * 100) / 100 : 0;
+    arr.sort((a, b) => b.revenue - a.revenue);
+    return arr;
+  }, [salesData, typeFilter]);
+
+  const filtered = searchQ
+    ? products.filter((p) => p.name.toLowerCase().includes(searchQ.toLowerCase()))
+    : products;
+
+  const periodRevenue = products.reduce((a, b) => a + b.revenue, 0);
+  const periodKg = products.reduce((a, b) => a + b.kg, 0);
+
+  // Chart data (top 6)
+  const chartData = products.slice(0, 6).map((p) => ({ name: p.name, revenue: p.revenue }));
+  const MEAT_RED = "#e0533f";
+
   return (
     <div className="space-y-4">
+      {/* Hero */}
       <Card className="overflow-hidden card-raised">
         <div className="bg-gradient-to-br from-primary/15 via-card to-card p-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("home.topProducts")}
+            {t("productSales.topProducts")}
           </p>
           <p className="mt-1 text-2xl font-bold tnum tracking-tight">
-            {formatBirr(data.products.reduce((a, b) => a + b.revenue, 0))}
+            {formatBirr(periodRevenue)}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {data.products.length} {t("reports.products").toLowerCase()}
+          <p className="mt-0.5 text-xs text-muted-foreground tnum">
+            {products.reduce((a, b) => a + b.sales, 0)} {t("salesHistory.salesPlural")} · {formatKg(periodKg)} {t("productSales.kgSold")} · {products.length} {t("reports.products").toLowerCase()}
           </p>
         </div>
       </Card>
 
-      <Card className="p-4 card-raised">
-        <h3 className="mb-3 text-sm font-semibold">{t("home.topProducts")}</h3>
-        {top.length === 0 ? (
-          <p className="py-8 text-center text-xs text-muted-foreground">
-            {t("salesHistory.empty")}
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {top.map((p, i) => (
-              <div key={p.name}>
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="grid h-5 w-5 place-items-center rounded-md bg-muted text-[10px] font-bold tnum">
-                      {i + 1}
-                    </span>
-                    <span className="font-medium">{p.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold tnum">{formatBirr(p.revenue)}</span>
-                    <span className="ml-2 text-muted-foreground tnum">
-                      {formatKg(p.kg)}
-                    </span>
-                  </div>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted/60">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${(p.revenue / max) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+      {/* Type filter */}
+      <div className="grid grid-cols-3 gap-1.5">
+        {(["ALL", "TAKE_HOME", "EAT_HERE"] as const).map((tf) => {
+          const active = typeFilter === tf;
+          return (
+            <button key={tf} onClick={() => setTypeFilter(tf)}
+              className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", active && tf === "ALL" && "bg-primary text-primary-foreground", active && tf === "TAKE_HOME" && "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30", active && tf === "EAT_HERE" && "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30", !active && "bg-muted/60 text-muted-foreground")}>
+              {tf === "ALL" ? t("common.all") : tf === "TAKE_HOME" ? t("home.takeHome") : t("home.eatHere")}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+        </svg>
+        <input value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder={t("productSales.searchPlaceholder")}
+          className="h-9 w-full rounded-lg border border-border/60 bg-card/80 pl-9 pr-3 text-xs font-medium text-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/15" />
+      </div>
+
+      {/* Bar chart */}
+      {chartData.length > 0 && (
+        <Card className="p-4 card-raised">
+          <h3 className="mb-3 text-sm font-semibold">{t("productSales.topProducts")}</h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                <XAxis type="number" stroke="oklch(0.68 0.008 55)" tick={{ fontSize: 10 }} tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`} />
+                <YAxis type="category" dataKey="name" stroke="oklch(0.68 0.008 55)" tick={{ fontSize: 10 }} width={50} />
+                <Tooltip formatter={(v: number) => formatBirr(v)} contentStyle={{ background: "oklch(0.2 0 0 / 0.95)", border: "1px solid oklch(0.3 0 0)", borderRadius: 12, fontSize: 12 }} />
+                <Bar dataKey="revenue" radius={[0, 4, 4, 0]} barSize={16}>
+                  {chartData.map((_, i) => <Cell key={i} fill={MEAT_RED} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
+
+      {/* Product cards */}
+      {salesLoading ? (
+        <ListSkeleton rows={3} />
+      ) : filtered.length === 0 ? (
+        <EmptyState title={t("productSales.noProducts")} />
+      ) : (
+        <div className="space-y-2.5">
+          {filtered.map((p) => (
+            <Card key={p.name} className="p-3.5 card-raised">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{p.name}</p>
+                  <p className="text-[11px] text-muted-foreground tnum">
+                    {p.sales} {p.sales === 1 ? t("home.sales") : t("salesHistory.salesPlural")} · {formatKg(p.kg)} · {t("productSales.avgPerKg")} {formatBirr(p.avgPricePerKg)}/kg
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm font-bold tnum">{formatBirr(p.revenue)}</p>
+              </div>
+              {(p.takeHome.count > 0 || p.eatHere.count > 0) && (
+                <div className="mt-2.5 grid grid-cols-2 gap-2">
+                  {p.takeHome.count > 0 && (
+                    <div className="rounded-lg bg-amber-500/10 p-2 ring-1 ring-amber-500/15">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-400">{t("home.takeHome")} · {t("common.out")}</p>
+                      <p className="mt-0.5 text-sm font-bold tnum">{formatBirr(p.takeHome.revenue)}</p>
+                      <p className="text-[10px] text-muted-foreground tnum">{p.takeHome.count} {p.takeHome.count === 1 ? t("home.sales") : t("salesHistory.salesPlural")} · {formatKg(p.takeHome.kg)}</p>
+                    </div>
+                  )}
+                  {p.eatHere.count > 0 && (
+                    <div className="rounded-lg bg-emerald-500/10 p-2 ring-1 ring-emerald-500/15">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400">{t("home.eatHere")} · {t("common.in")}</p>
+                      <p className="mt-0.5 text-sm font-bold tnum">{formatBirr(p.eatHere.revenue)}</p>
+                      <p className="text-[10px] text-muted-foreground tnum">{p.eatHere.count} {p.eatHere.count === 1 ? t("home.sales") : t("salesHistory.salesPlural")} · {formatKg(p.eatHere.kg)}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

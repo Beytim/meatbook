@@ -41,7 +41,6 @@ const VIEW_MAP: Record<ViewId, React.ComponentType> = {
   SUPPLIER_LEDGER: SupplierLedgerView,
   EXPENSES: dynamic(() => import("@/components/views/expenses-view").then((m) => m.ExpensesView), { loading }),
   CASH_CONTROL: CashControlView,
-  REFUND_VOID: dynamic(() => import("@/components/views/refund-void-view").then((m) => m.RefundVoidView), { loading }),
   REPORTS: dynamic(() => import("@/components/views/reports-view").then((m) => m.ReportsView), { loading }),
   STAFF: dynamic(() => import("@/components/views/staff-view").then((m) => m.StaffView), { loading }),
   AUDIT_LOG: dynamic(() => import("@/components/views/audit-log-view").then((m) => m.AuditLogView), { loading }),

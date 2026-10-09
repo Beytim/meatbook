@@ -147,8 +147,8 @@ export function ProductSalesView() {
 
   return (
     <PageScaffold
-      title="Product Sales"
-      subtitle="Which products are driving revenue"
+      title={t("productSales.title")}
+      subtitle={t("productSales.subtitle")}
       onBack={() => back()}
     >
       <div className="mb-4">
@@ -199,7 +199,7 @@ export function ProductSalesView() {
       <SearchInput
         value={query}
         onChange={setQuery}
-        placeholder="Search products…"
+        placeholder={t("productSales.searchPlaceholder")}
         className="mb-4"
       />
 
@@ -207,7 +207,7 @@ export function ProductSalesView() {
       <Card className="mb-4 overflow-hidden card-raised">
         <div className="bg-gradient-to-br from-primary/15 via-card to-card p-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Revenue · {periodLabel(period)}
+            {t("salesHistory.revenue")} · {periodLabel(period)}
           </p>
           <p className="mt-1 text-3xl font-bold tnum tracking-tight">
             {formatBirr(periodRevenue)}
@@ -292,7 +292,7 @@ export function ProductSalesView() {
               <path d="M7 14l3 3 4-5" />
             </svg>
           }
-          title="No products sold in this period."
+          title={t("productSales.noProducts")}
           description="Try a wider period or a different filter."
         />
       ) : (

@@ -20,8 +20,8 @@ export const dict: Dict = {
 
   // Home (legacy keys kept for backward-compat)
   "home.todaysSales": { en: "Today's Sales", am: "የዛሬ ሽያጭ" },
-  "home.takeHome": { en: "Take Home", am: "ወደ ቤት የተወሰደ" },
-  "home.eatHere": { en: "Eat Here", am: "በቦታው የተበላ" },
+  "home.takeHome": { en: "Take Home", am: "ለውጭ" },
+  "home.eatHere": { en: "Eat Here", am: "ለውስጥ" },
   "home.purchaseRecovery": { en: "Purchase Recovery", am: "የግዥ ማስመለሻ" },
   "home.netResult": { en: "Net Result", am: "የተጣራ ትርፍ" },
   "home.soldToday": { en: "Sold Today", am: "ዛሬ የተሸጠ" },
@@ -113,10 +113,10 @@ export const dict: Dict = {
   "sell.searchMeat": { en: "Search meat…", am: "ስጋ ይፈልጉ…" },
   "sell.cart": { en: "Cart", am: "ጥቅል" },
   "sell.openCart": { en: "Open cart", am: "ጥቅሉን ይክፈቱ" },
-  "sell.takeHome": { en: "Take Home", am: "ወደ ቤት የተወሰደ" },
-  "sell.eatHere": { en: "Eat Here", am: "በቦታው የተበላ" },
-  "sell.packedToGo": { en: "Packed to go", am: "ለመውሰድ ታሸገ" },
-  "sell.dineIn": { en: "Dine in", am: "በቦታው የተበላ" },
+  "sell.takeHome": { en: "Take Home", am: "ለውጭ" },
+  "sell.eatHere": { en: "Eat Here", am: "ለውስጥ" },
+  "sell.packedToGo": { en: "Packed to go", am: "ለውጭ ታሸገ" },
+  "sell.dineIn": { en: "Dine in", am: "ለውስጥ" },
   "sell.paymentMethod": { en: "Payment method", am: "የክፍያ ዘዴ" },
   "sell.cash": { en: "Cash", am: "ጥሬ ገንዘብ" },
   "sell.mobile": { en: "Mobile", am: "ሞባይል" },
@@ -576,6 +576,15 @@ export const dict: Dict = {
 
   // Brand
   "brand.tagline": { en: "Digital Butcher's Book", am: "የስጋ ቤት ዲጂታል መዝገብ" },
+
+  // Product Sales
+  "productSales.title": { en: "Product Sales", am: "የምርት ሽያጭ" },
+  "productSales.subtitle": { en: "Which products are driving revenue", am: "የትኞቹ ምርቶች ገቢ እያመጡ ነው" },
+  "productSales.searchPlaceholder": { en: "Search products…", am: "ምርቶችን ፈልግ…" },
+  "productSales.topProducts": { en: "Top Products by Revenue", am: "ከፍተኛ ገቢ ያስገኙ ምርቶች" },
+  "productSales.noProducts": { en: "No products sold in this period.", am: "በዚህ ጊዜ ምርት አልተሸጠም።" },
+  "productSales.avgPerKg": { en: "avg", am: "አማካይ" },
+  "productSales.kgSold": { en: "kg sold", am: "ኪ.ግ. የተሸጠ" },
 };
 
 export function t(key: string, lang: Lang = "en"): string {

@@ -14,7 +14,6 @@ const MORE_GROUPS: { titleKey: string; items: { id: ViewId; labelKey: string; ic
     items: [
       { id: "SALES_HISTORY", labelKey: "salesHistory.title", descKey: "salesHistory.subtitle", icon: <Ico path="M3 3v18h18 M7 14l3-3 3 2 4-5" /> },
       { id: "PRODUCT_SALES", labelKey: "home.productSales", descKey: "home.productSales", icon: <Ico path="M4 20V10 M10 20V4 M16 20v-7 M22 20H2" /> },
-      { id: "RECEIPTS", labelKey: "receipts.title", descKey: "receipts.subtitle", icon: <Ico path="M6 2h9l4 4v16H6z M9 9h7 M9 13h7 M9 17h4" /> },
       { id: "REFUND_VOID", labelKey: "refundVoid.title", descKey: "refundVoid.subtitle", icon: <Ico path="M3 7v6h6 M3 13a9 9 0 1 0 3-7" /> },
     ],
   },

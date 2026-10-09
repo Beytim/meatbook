@@ -13,7 +13,6 @@ export type ViewId =
   | "WASTAGE"
   | "EXPENSES"
   | "CASH_CONTROL"
-  | "RECEIPTS"
   | "REFUND_VOID"
   | "REPORTS"
   | "STAFF"
@@ -47,7 +46,6 @@ export const MORE_VIEWS: ViewId[] = [
   "WASTAGE",
   "EXPENSES",
   "CASH_CONTROL",
-  "RECEIPTS",
   "REFUND_VOID",
   "REPORTS",
   "CUSTOMER_DEBTS",
@@ -102,7 +100,6 @@ export function activePrimary(view: ViewId): ViewId {
     case "SALES_HISTORY":
     case "PRODUCT_SALES":
     case "REFUND_VOID":
-    case "RECEIPTS":
     case "REPORTS":
       return "HOME";
     case "PURCHASES":

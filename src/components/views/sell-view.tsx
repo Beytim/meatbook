@@ -429,7 +429,7 @@ export function SellView() {
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             </div>
-            <button onClick={() => go("RECEIPTS")} className="mt-2 w-full rounded-lg bg-emerald-500/20 py-1.5 text-[11px] font-semibold text-emerald-300">{t("sell.viewReceipt")}</button>
+            <button onClick={() => go("SALES_HISTORY")} className="mt-2 w-full rounded-lg bg-emerald-500/20 py-1.5 text-[11px] font-semibold text-emerald-300">{t("sell.viewReceipt")}</button>
           </Card>
         </div>
       )}

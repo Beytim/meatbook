@@ -343,10 +343,10 @@ export const dict: Dict = {
 
   // Supplier Ledger
   "suppliers.title": { en: "Supplier Ledger", am: "የአቅራቢ መዝገብ" },
-  "suppliers.subtitle": { en: "Money owed by the shop to suppliers", am: "ለአቅራቢዎች የወሰነው ገንዘብ" },
+  "suppliers.subtitle": { en: "Money owed by the shop to suppliers", am: "ሱቁ ለአቅራቢዎች ያለበት ዕዳ" },
   "suppliers.add": { en: "Add Supplier", am: "አቅራቢ ጨምር" },
-  "suppliers.totalOwed": { en: "Total Owed to Suppliers", am: "ጠቅላላ የወሰነው" },
-  "suppliers.weOwe": { en: "We owe", am: "የወሰንነው" },
+  "suppliers.totalOwed": { en: "Total Owed to Suppliers", am: "ጠቅላላ ዕዳ" },
+  "suppliers.weOwe": { en: "We owe", am: "ዕዳ አለብን" },
   "suppliers.clear": { en: "Clear", am: "ተከፍሏል" },
   "suppliers.wePaid": { en: "We paid", am: "ከፍለናል" },
   "suppliers.recordPayment": { en: "Record Payment", am: "ክፍያ መዝግብ" },

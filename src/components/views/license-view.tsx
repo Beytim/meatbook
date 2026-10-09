@@ -8,9 +8,8 @@ import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   PageScaffold, Pill, ListSkeleton, SectionHeader,
@@ -21,6 +20,7 @@ import { useLang } from "@/components/lang-provider";
 interface License {
   licenseId: string;
   shopId: string;
+  shopName: string;
   plan: string;
   status: string;
   daysRemaining: number;
@@ -28,9 +28,6 @@ interface License {
   expiry: string;
 }
 interface LicenseResp { license: License }
-interface SettingsResp {
-  settings: { shopId: string; licenseId: string; shopName: string };
-}
 
 // ─── View ───────────────────────────────────────────────────────────────
 export function LicenseView() {
@@ -46,16 +43,6 @@ export function LicenseView() {
       if (!r.ok) throw new Error("Failed to load license");
       return r.json();
     },
-  });
-
-  const { data: settingsData } = useQuery<SettingsResp>({
-    queryKey: ["settings"],
-    queryFn: async () => {
-      const r = await fetch("/api/meat/settings");
-      if (!r.ok) throw new Error("Failed to load settings");
-      return r.json();
-    },
-    staleTime: 30_000,
   });
 
   const license = data?.license;
@@ -119,8 +106,8 @@ export function LicenseView() {
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {expiryDate
-                    ? `License expires on ${formatDate(expiryDate)}.`
-                    : "No expiry set."}
+                    ? `${t("license.title")} ${formatDate(expiryDate)}.`
+                    : "—"}
                 </p>
               </div>
             </div>
@@ -128,7 +115,7 @@ export function LicenseView() {
 
           {/* Details grid */}
           <div className="mb-3">
-            <SectionHeader title={t("license.details")} subtitle="Activation, plan and validity" />
+            <SectionHeader title={t("license.details")} subtitle={t("license.subtitle")} />
           </div>
           <Card className="mb-5 p-4 card-raised">
             <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
@@ -144,7 +131,7 @@ export function LicenseView() {
             <div className="my-4 h-px w-full bg-border/60" />
 
             <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              License Period
+              {t("license.period")}
             </p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
               <DetailCell
@@ -159,12 +146,12 @@ export function LicenseView() {
                 label={t("license.active")}
                 value={
                   <Pill tone={isActive ? "good" : "bad"}>
-                    {isActive ? "Yes" : "No"}
+                    {isActive ? t("common.yes") : t("common.no")}
                   </Pill>
                 }
               />
               <DetailCell
-                label="Issued"
+                label={t("license.issued")}
                 value={
                   <span className="tnum text-xs">
                     {startDate ? formatDateTime(startDate) : "—"}
@@ -176,11 +163,9 @@ export function LicenseView() {
 
           {/* Renewal help card */}
           <Card className="p-4 card-raised bg-muted/30">
-            <p className="text-sm font-semibold">Need to renew?</p>
+            <p className="text-sm font-semibold">{t("license.needRenew")}</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Ask the MeatBook owner to issue a signed renewal key. Tap{" "}
-              <span className="font-medium text-foreground">Renew License</span>{" "}
-              to paste a key, or generate a demo key to test the flow.
+              {t("license.renewHelp")}
             </p>
             <Button
               variant="outline"
@@ -197,8 +182,6 @@ export function LicenseView() {
       <RenewLicenseDialog
         open={renewOpen}
         onClose={() => setRenewOpen(false)}
-        shopId={settingsData?.settings.shopId ?? ""}
-        licenseId={settingsData?.settings.licenseId ?? ""}
         onSuccess={() => qc.invalidateQueries({ queryKey: ["license"] })}
       />
     </PageScaffold>
@@ -227,14 +210,10 @@ function DetailCell({
 function RenewLicenseDialog({
   open,
   onClose,
-  shopId,
-  licenseId,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
-  shopId: string;
-  licenseId: string;
   onSuccess: () => void;
 }) {
   const [key, setKey] = React.useState("");
@@ -244,26 +223,6 @@ function RenewLicenseDialog({
   React.useEffect(() => {
     if (!open) setKey("");
   }, [open]);
-
-  // Generate a demo renewal key for the current shopId + 60 days.
-  const generateDemoKey = () => {
-    if (!shopId) {
-      toast.error("Shop ID not loaded yet");
-      return;
-    }
-    const payload = {
-      shopId,
-      expiry: new Date(Date.now() + 60 * 86400000).toISOString(),
-      licenseId: licenseId || "MB-DEMO-0001",
-    };
-    const b64 = btoa(JSON.stringify(payload))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-    const demoKey = `${b64}.demosig`;
-    setKey(demoKey);
-    toast.success("Demo key generated — 60 day renewal");
-  };
 
   const renewMut = useMutation({
     mutationFn: async (k: string) => {
@@ -278,7 +237,7 @@ function RenewLicenseDialog({
     },
     onSuccess: (data) => {
       const d = data?.licenseExpiry ? new Date(data.licenseExpiry) : null;
-      toast.success(d ? `License renewed · expires ${formatDate(d)}` : "License renewed");
+      toast.success(d ? `${t("license.title")} ${formatDate(d)}` : t("license.title"));
       qc.invalidateQueries({ queryKey: ["license"] });
       qc.invalidateQueries({ queryKey: ["settings"] });
       onSuccess();
@@ -291,62 +250,51 @@ function RenewLicenseDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] max-w-md flex-col gap-0 overflow-hidden p-0">
+        {/* Header — fixed at top */}
+        <DialogHeader className="shrink-0 border-b border-border/60 p-5 pb-4">
           <DialogTitle>{t("license.renew")}</DialogTitle>
           <DialogDescription>
-            Paste a signed renewal key from the MeatBook owner to extend your license.
+            {t("license.dialogDesc")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="license-key" className="text-xs text-muted-foreground">
-              License key
-            </Label>
-            <Textarea
-              id="license-key"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="Paste your license key here…"
-              className="min-h-24 font-mono text-xs"
-            />
-          </div>
+        {/* Middle — scrollable */}
+        <div className="flex-1 overflow-y-auto p-5">
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="license-key" className="text-xs text-muted-foreground">
+                {t("license.keyLabel")}
+              </Label>
+              <textarea
+                id="license-key"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder={t("license.keyPlaceholder")}
+                rows={4}
+                className="flex w-full resize-none rounded-md border border-input bg-background px-3 py-2 font-mono text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
 
-          <div className="rounded-lg border border-border/70 bg-muted/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
-            <p>
-              Ask the MeatBook owner to issue a signed renewal key. The owner generates a key tied to your shop ID and a new expiry date, then signs it with their license tool. Paste the key into the dialog to activate or renew.
-            </p>
-            <p className="mt-2">
-              <span className="font-medium text-foreground">Format:</span>{" "}
-              <span className="font-mono">base64url(payloadJson).hexHmac</span>
-            </p>
+            <div className="rounded-lg border border-border/70 bg-muted/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              <p>
+                {t("license.dialogHelp")}
+              </p>
+            </div>
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={generateDemoKey}
-            className="w-full tap-scale"
-          >
-            <svg viewBox="0 0 24 24" className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="m10 12-2 2 2 2" /><path d="m14 16 2-2-2-2" />
-            </svg>
-            Generate demo key
-          </Button>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={renewMut.isPending}>Cancel</Button>
+        {/* Footer — fixed at bottom */}
+        <div className="flex shrink-0 gap-2 border-t border-border/60 bg-card p-4">
+          <Button variant="outline" onClick={onClose} disabled={renewMut.isPending} className="flex-1">{t("common.cancel")}</Button>
           <Button
             onClick={() => renewMut.mutate(key.trim())}
             disabled={!canSubmit}
-            className="bg-primary text-primary-foreground"
+            className="flex-1 bg-primary text-primary-foreground"
           >
-            {renewMut.isPending ? "Activating…" : t("license.activate")}
+            {renewMut.isPending ? "…" : t("license.activate")}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

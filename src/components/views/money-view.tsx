@@ -129,7 +129,7 @@ export function MoneyView() {
                   return (
                     <div key={tx.id} className="flex items-center gap-2 rounded-lg bg-card/40 px-2.5 py-2">
                       <div className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[9px] font-bold", iconBg)}>
-                        {tx.kind === "IN" ? "IN" : "OUT"}
+                        {tx.kind === "IN" ? t("common.in") : t("common.out")}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-semibold">{tx.source}: {tx.reason}</p>

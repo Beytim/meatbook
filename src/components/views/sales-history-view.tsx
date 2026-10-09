@@ -207,7 +207,7 @@ function SaleRow({ sale, onOpen, statusLabel, paymentLabel }: { sale: Sale; onOp
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <div className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", isTakeHome ? "bg-amber-500/15 text-amber-400" : "bg-emerald-500/15 text-emerald-400")}>
-              <span className="text-[9px] font-bold">{isTakeHome ? "OUT" : "IN"}</span>
+              <span className="text-[9px] font-bold">{isTakeHome ? t("common.out") : t("common.in")}</span>
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
@@ -282,7 +282,7 @@ function ReceiptDialog({ id, onClose, statusLabel, paymentLabel }: { id: string 
               <div className="grid grid-cols-2 gap-2">
                 <MetaCell label={t("common.date")} value={formatDateTime(sale.createdAt)} />
                 <MetaCell label={t("common.cashier")} value={sale.cashierName || "—"} />
-                <MetaCell label={t("common.type")} value={sale.type === "TAKE_HOME" ? `${t("sell.takeHome")} · OUT` : `${t("sell.eatHere")} · IN`} tone={sale.type === "TAKE_HOME" ? "amber" : "emerald"} />
+                <MetaCell label={t("common.type")} value={sale.type === "TAKE_HOME" ? `${t("sell.takeHome")} · ${t("common.out")}` : `${t("sell.eatHere")} · ${t("common.in")}`} tone={sale.type === "TAKE_HOME" ? "amber" : "emerald"} />
                 <MetaCell label={t("common.payment")} value={paymentLabel(sale.paymentMethod, sale.paymentDetail)} />
               </div>
 

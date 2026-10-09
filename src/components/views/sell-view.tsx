@@ -311,7 +311,7 @@ export function SellView() {
               className={cn("relative overflow-hidden rounded-2xl border p-3 text-left tap-scale transition-colors", saleType === "TAKE_HOME" ? "border-amber-500/40 bg-amber-500/10" : "border-border/60 bg-card/50")}
             >
               <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-500/20 text-amber-400 text-xs font-bold">OUT</span>
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-500/20 text-amber-400 text-xs font-bold">{t("common.out")}</span>
                 <div><p className="text-sm font-bold">{t("sell.takeHome")}</p><p className="text-[10px] text-muted-foreground">{t("sell.packedToGo")}</p></div>
               </div>
             </button>
@@ -320,7 +320,7 @@ export function SellView() {
               className={cn("relative overflow-hidden rounded-2xl border p-3 text-left tap-scale transition-colors", saleType === "EAT_HERE" ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/60 bg-card/50")}
             >
               <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-bold">IN</span>
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-bold">{t("common.in")}</span>
                 <div><p className="text-sm font-bold">{t("sell.eatHere")}</p><p className="text-[10px] text-muted-foreground">{t("sell.dineIn")}</p></div>
               </div>
             </button>

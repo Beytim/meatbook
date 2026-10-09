@@ -538,6 +538,8 @@ export const dict: Dict = {
   "common.confirm": { en: "Confirm", am: "አረጋግጥ" },
   "common.yes": { en: "Yes", am: "አዎ" },
   "common.no": { en: "No", am: "አይ" },
+  "common.out": { en: "OUT", am: "ወደ ውጭ" },
+  "common.in": { en: "IN", am: "ወደ ውስጥ" },
   "common.today": { en: "Today", am: "ዛሬ" },
   "common.yesterday": { en: "Yesterday", am: "ትናንት" },
   "common.days7": { en: "7 Days", am: "7 ቀን" },

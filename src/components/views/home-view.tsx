@@ -496,7 +496,7 @@ function RecentActivityCard({ sales, cur, t }: { sales: DashboardData["recentSal
         {sales.map((s) => (
           <div key={s.number} className="flex items-center gap-2.5 rounded-lg bg-muted/20 px-2.5 py-2">
             <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${s.type === "TAKE_HOME" ? "bg-amber-500/15 text-amber-400" : "bg-emerald-500/15 text-emerald-400"}`}>
-              <span className="text-[9px] font-bold">{s.type === "TAKE_HOME" ? "OUT" : "IN"}</span>
+              <span className="text-[9px] font-bold">{s.type === "TAKE_HOME" ? t("common.out") : t("common.in")}</span>
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold tnum">#{s.number}</p>

@@ -21,7 +21,6 @@ const MORE_GROUPS: { titleKey: string; items: { id: ViewId; labelKey: string; ic
       { id: "PURCHASES", labelKey: "purchases.title", descKey: "purchases.subtitle", icon: <Ico path="M3 3v18h18 M7 10l3 3 4-5" /> },
       { id: "WASTAGE", labelKey: "home.wastage", descKey: "wastage.subtitle", icon: <Ico path="M5 5l14 14 M16 5a3.5 3.5 0 0 1 0 5l-5 5a3.5 3.5 0 0 1-5-5l5-5a3.5 3.5 0 0 1 5 0z" /> },
       { id: "EXPENSES", labelKey: "expenses.title", descKey: "expenses.subtitle", icon: <Ico path="M2 7h20v12H2z M2 11h20 M16 15h2" /> },
-      { id: "CASH_CONTROL", labelKey: "cashControl.title", descKey: "cashControl.subtitle", icon: <Ico path="M3 7h18v12H3z M3 11h18 M8 15h3" /> },
       { id: "CUSTOMER_DEBTS", labelKey: "debts.title", descKey: "debts.subtitle", icon: <Ico path="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2 M9.5 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M23 21v-2a4 4 0 0 0-3-3.8 M16 3.1a3.5 3.5 0 0 1 0 6.8" /> },
       { id: "SUPPLIER_LEDGER", labelKey: "suppliers.title", descKey: "suppliers.subtitle", icon: <Ico path="M4 4v16h16V4z M8 10h8 M8 14h6 M8 7h8" /> },
     ],

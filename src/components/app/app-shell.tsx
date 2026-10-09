@@ -18,7 +18,6 @@ import { PurchasesView } from "@/components/views/purchases-view";
 import { WastageView } from "@/components/views/wastage-view";
 import { CustomerDebtsView } from "@/components/views/customer-debts-view";
 import { SupplierLedgerView } from "@/components/views/supplier-ledger-view";
-import { CashControlView } from "@/components/views/cash-control-view";
 
 // Secondary ("More") views are lazy-loaded to keep memory low under the cgroup limit.
 const loading = () => (
@@ -39,7 +38,6 @@ const VIEW_MAP: Record<ViewId, React.ComponentType> = {
   CUSTOMER_DEBTS: CustomerDebtsView,
   SUPPLIER_LEDGER: SupplierLedgerView,
   EXPENSES: dynamic(() => import("@/components/views/expenses-view").then((m) => m.ExpensesView), { loading }),
-  CASH_CONTROL: CashControlView,
   REPORTS: dynamic(() => import("@/components/views/reports-view").then((m) => m.ReportsView), { loading }),
   STAFF: dynamic(() => import("@/components/views/staff-view").then((m) => m.StaffView), { loading }),
   AUDIT_LOG: dynamic(() => import("@/components/views/audit-log-view").then((m) => m.AuditLogView), { loading }),

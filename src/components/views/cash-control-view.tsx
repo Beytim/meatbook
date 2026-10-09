@@ -46,9 +46,25 @@ async function fetchSessions(): Promise<SessionsResp> {
   return r.json();
 }
 
-// ─── View ───────────────────────────────────────────────────────────────
+// ─── View (standalone — kept for backward compat) ──────────────────────
 export function CashControlView() {
   const { back } = useNav();
+  const { t } = useLang();
+  return (
+    <PageScaffold
+      title={t("cashControl.title")}
+      subtitle={t("cashControl.subtitle")}
+      onBack={() => back()}
+    >
+      <CashDrawerSection />
+    </PageScaffold>
+  );
+}
+
+// ─── Cash Drawer Section (embedded in Money view) ───────────────────────
+// Contains all cash-control logic: open/close drawer, session display,
+// past sessions. Uses the same API, mutations, and invalidations.
+export function CashDrawerSection() {
   const { t } = useLang();
   const qc = useQueryClient();
   const [openDrawer, setOpenDrawer] = React.useState(false);
@@ -62,7 +78,6 @@ export function CashControlView() {
 
   const open = data?.open ?? null;
   const closedSessions = (data?.sessions ?? []).filter((s) => s.status === "CLOSED");
-  // Include justClosed session in the list if not already there (for immediate display)
   const allClosedSessions = justClosed && !closedSessions.find((s) => s.id === justClosed.id)
     ? [justClosed, ...closedSessions]
     : closedSessions;
@@ -83,11 +98,7 @@ export function CashControlView() {
   }
 
   return (
-    <PageScaffold
-      title={t("cashControl.title")}
-      subtitle={t("cashControl.subtitle")}
-      onBack={() => back()}
-    >
+    <>
       {isLoading ? (
         <ListSkeleton rows={3} />
       ) : open ? (
@@ -247,7 +258,7 @@ export function CashControlView() {
         expected={open?.expected ?? 0}
         onSuccess={handleCloseSuccess}
       />
-    </PageScaffold>
+    </>
   );
 }
 

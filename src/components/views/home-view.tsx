@@ -258,7 +258,7 @@ export function HomeView() {
                 </p>
               </div>
             </div>
-            <button onClick={() => go("CASH_CONTROL")} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground tap-scale">{t("home.close")}</button>
+            <button onClick={() => go("MONEY")} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground tap-scale">{t("home.close")}</button>
           </div>
         </Card>
       )}

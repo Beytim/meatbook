@@ -17,6 +17,7 @@ import { AccountTreeCard, type AccountTree } from "@/components/app/account-tree
 import { AccountProviderSelect } from "@/components/app/account-provider-select";
 import { subAccountName, type PaymentMethod } from "@/lib/accounts";
 import { useLang } from "@/components/lang-provider";
+import { CashDrawerSection } from "@/components/views/cash-control-view";
 
 interface MoneyData {
   accounts: { cash: number; mobile: number; bank: number };
@@ -45,6 +46,9 @@ export function MoneyView() {
         <h1 className="text-2xl font-bold tracking-tight">{t("money.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("money.cashOnHandAllTime")}</p>
       </div>
+
+      {/* Cash Drawer section (merged from Cash Control) */}
+      <CashDrawerSection />
 
       {/* Cash on hand — tree breakdown by sub-account */}
       <div className="mb-2 px-1"><h2 className="text-base font-semibold">{t("money.cashOnHandAllTime")}</h2></div>

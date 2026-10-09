@@ -42,7 +42,6 @@ const VIEW_MAP: Record<ViewId, React.ComponentType> = {
   STAFF: dynamic(() => import("@/components/views/staff-view").then((m) => m.StaffView), { loading }),
   AUDIT_LOG: dynamic(() => import("@/components/views/audit-log-view").then((m) => m.AuditLogView), { loading }),
   BACKUP: dynamic(() => import("@/components/views/backup-view").then((m) => m.BackupView), { loading }),
-  DEVICE: dynamic(() => import("@/components/views/device-view").then((m) => m.DeviceView), { loading }),
   LICENSE: dynamic(() => import("@/components/views/license-view").then((m) => m.LicenseView), { loading }),
   SETTINGS: dynamic(() => import("@/components/views/settings-view").then((m) => m.SettingsView), { loading }),
 };

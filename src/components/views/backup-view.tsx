@@ -330,18 +330,7 @@ export function BackupView() {
         <SectionHeader
           title={t("backup.history")}
           subtitle={backups.length > 0 ? `${backups.length} snapshot${backups.length === 1 ? "" : "s"}` : undefined}
-          action={
-            backups.length > 0 ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => go("DEVICE")}
-                className="tap-scale"
-              >
-                Storage
-              </Button>
-            ) : undefined
-          }
+          action={undefined}
         />
       </div>
 
@@ -403,6 +392,18 @@ export function BackupView() {
         onCancel={() => setPendingFile(null)}
         onConfirm={() => pendingFile && restoreMut.mutate(pendingFile)}
       />
+
+      {/* App Info (merged from Device & Storage) */}
+      <div className="mt-5">
+        <SectionHeader title={t("device.appInfo")} subtitle={t("device.appVersion")} />
+      </div>
+      <Card className="mb-5 p-4 card-raised">
+        <div className="space-y-2.5">
+          <Row label={t("device.appVersion")} value={<span className="tnum font-mono">v1.0.0</span>} />
+          <Row label={t("device.storageMode")} value={<span className="text-[11px]">Offline-first (local database)</span>} />
+          <Row label={t("backup.databaseSize")} value={<span className="tnum">{formatBytes(dbSize)}</span>} />
+        </div>
+      </Card>
     </PageScaffold>
   );
 }
@@ -505,5 +506,15 @@ function RestoreConfirmDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Row helper (for App Info section) ──────────────────────────────────
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-border/40 pb-2.5 last:border-0 last:pb-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-right text-xs font-medium">{value}</span>
+    </div>
   );
 }

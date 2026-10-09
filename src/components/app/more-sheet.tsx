@@ -37,7 +37,6 @@ const MORE_GROUPS: { titleKey: string; items: { id: ViewId; labelKey: string; ic
     items: [
       { id: "STAFF", labelKey: "staff.title", descKey: "staff.subtitle", icon: <Ico path="M16 19v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2 M9.5 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M17 11a3 3 0 1 0 0-6 M22 19v-2a4 4 0 0 0-3-3.8" /> },
       { id: "BACKUP", labelKey: "backup.title", descKey: "backup.subtitle", icon: <Ico path="M4 4v16h16V4z M12 8v8 M8 12l4-4 4 4" /> },
-      { id: "DEVICE", labelKey: "device.title", descKey: "device.title", icon: <Ico path="M2 5h20v12H2z M2 21h20 M8 17v4 M16 17v4" /> },
       { id: "LICENSE", labelKey: "license.title", descKey: "license.title", icon: <Ico path="M4 4v16h16V4z M9 12l2 2 4-4" /> },
       { id: "SETTINGS", labelKey: "settings.title", descKey: "settings.title", icon: <Ico path="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14.5 2h-5l-.3 2a7 7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.3 2h5l.3-2a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1z" /> },
     ],

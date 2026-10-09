@@ -1,0 +1,529 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useQuery } from "@tanstack/react-query";
+     5→import { useNav } from "@/lib/nav";
+     6→import { formatBirr, formatKg, formatTime, cn } from "@/lib/utils";
+     7→import { Card } from "@/components/ui/card";
+     8→import { Pill } from "@/components/app/primitives";
+     9→import { AccountTreeCard, type AccountTree } from "@/components/app/account-tree";
+    10→import { animalName, animalEmoji, animalTone } from "@/lib/animals";
+    11→
+    12→interface DashboardData {
+    13→  settings: { shopName: string; currency: string };
+    14→  today: {
+    15→    salesCount: number;
+    16→    revenue: number;
+    17→    kgSold: number;
+    18→    takeHome: { revenue: number; count: number; kg: number };
+    19→    eatHere: { revenue: number; count: number; kg: number };
+    20→  };
+    21→  lastSaleNumber: number | null;
+    22→  openSession: { id: string; opening: number; openedAt: string; openedBy: string | null; expectedCash?: number } | null;
+    23→  accounts: { cash: number; mobile: number; bank: number };
+    24→  tree: { CASH: AccountTree; MOBILE: AccountTree; BANK: AccountTree };
+    25→  flow: {
+    26→    todayKgSold: number;
+    27→    purchaseKg: number;
+    28→    purchaseAmount: number;
+    29→    todayExpenses: number;
+    30→    todayRevenue: number;
+    31→    profit: number;
+    32→    profitMargin: number;
+    33→    profitStatus: "loss" | "break_even" | "healthy";
+    34→    purchaseCoverage: number;
+    35→    kgRatio: number;
+    36→  };
+    37→  todayPurchases: {
+    38→    count: number;
+    39→    total: number;
+    40→    totalKg: number;
+    41→    animalBreakdown: { type: string; kg: number; amount: number; count: number; perKg: number }[];
+    42→  };
+    43→  topProducts: { name: string; revenue: number; kg: number; count: number }[];
+    44→  recentSales: { number: string; type: string; total: number; totalKg: number; paymentMethod: string; paymentDetail: string | null; cashierName: string | null; itemCount: number; createdAt: string }[];
+    45→  debtsOutstanding: number;
+    46→  supplierBalance: number;
+    47→  avgSale: number;
+    48→  yesterdayRevenue: number;
+    49→  yesterdayCount: number;
+    50→  revenueChange: number;
+    51→  monthRevenue: number;
+    52→  weekRevenue: number;
+    53→  weekCount: number;
+    54→  methodSplit: { method: string; revenue: number; pct: number }[];
+    55→  wastageTodayKg: number;
+    56→  wastageTodayCount: number;
+    57→}
+    58→
+    59→async function fetchDashboard(): Promise<DashboardData> {
+    60→  const res = await fetch("/api/meat/dashboard");
+    61→  if (!res.ok) throw new Error("failed");
+    62→  return res.json();
+    63→}
+    64→
+    65→export function HomeView() {
+    66→  const go = useNav((s) => s.go);
+    67→  const { data, isLoading, error } = useQuery({
+    68→    queryKey: ["dashboard"],
+    69→    queryFn: fetchDashboard,
+    70→  });
+    71→
+    72→  if (isLoading) return <HomeSkeleton />;
+    73→  if (error || !data) return <div className="p-8 text-center text-sm text-muted-foreground">Could not load dashboard.</div>;
+    74→
+    75→  const cur = data.settings.currency;
+    76→  const today = data.today;
+    77→
+    78→  return (
+    79→    <div className="mx-auto w-full max-w-2xl px-4 pb-28 pt-3">
+    80→      {/* Quick actions */}
+    81→      <div className="mb-5 grid grid-cols-4 gap-2.5">
+    82→        <QuickAction label="Sell" tone="primary" onClick={() => go("SELL")} icon={
+    83→          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1.6" /><circle cx="18" cy="21" r="1.6" /><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6" /></svg>
+    84→        } />
+    85→        <QuickAction label="Expense" onClick={() => go("EXPENSES")} icon={
+    86→          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 7h20v12H2z M2 11h20" /></svg>
+    87→        } />
+    88→        <QuickAction label="Purchase" onClick={() => go("PURCHASES")} icon={
+    89→          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18 M7 10l3 3 4-5" /></svg>
+    90→        } />
+    91→        <QuickAction label="Waste" onClick={() => go("WASTAGE")} icon={
+    92→          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 5a3.5 3.5 0 0 1 0 5l-5 5a3.5 3.5 0 0 1-5-5l5-5a3.5 3.5 0 0 1 5 0z M9 9l6 6" /></svg>
+    93→        } />
+    94→      </div>
+    95→
+    96→      {/* ─── Today's Sales — clean hero card ─── */}
+    97→      <Card className="mb-3 overflow-hidden card-raised bg-card">
+    98→        <div className="bg-gradient-to-br from-primary/12 via-card to-card px-4 py-3.5">
+    99→          <div className="flex items-end justify-between">
+   100→            <div>
+   101→              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Today&apos;s Sales</p>
+   102→              <p className="mt-0.5 text-2xl font-bold tnum tracking-tight">{formatBirr(today.revenue, cur)}</p>
+   103→            </div>
+   104→            <div className="text-right">
+   105→              <p className="text-xs text-muted-foreground tnum">{today.salesCount} {today.salesCount === 1 ? "sale" : "sales"}</p>
+   106→              <p className="text-xs text-muted-foreground tnum">{formatKg(today.kgSold)}</p>
+   107→            </div>
+   108→          </div>
+   109→        </div>
+   110→        <div className="grid grid-cols-2 divide-x divide-border/60">
+   111→          <div className="px-4 py-3">
+   112→            <div className="flex items-center gap-2">
+   113→              <span className="h-2 w-2 rounded-full bg-amber-400" />
+   114→              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Take Home</p>
+   115→            </div>
+   116→            <p className="mt-1 text-base font-bold tnum">{formatBirr(today.takeHome.revenue, cur)}</p>
+   117→            <p className="text-[11px] text-muted-foreground tnum">{today.takeHome.count} sales · {formatKg(today.takeHome.kg)}</p>
+   118→          </div>
+   119→          <div className="px-4 py-3">
+   120→            <div className="flex items-center gap-2">
+   121→              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+   122→              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Eat Here</p>
+   123→            </div>
+   124→            <p className="mt-1 text-base font-bold tnum">{formatBirr(today.eatHere.revenue, cur)}</p>
+   125→            <p className="text-[11px] text-muted-foreground tnum">{today.eatHere.count} sales · {formatKg(today.eatHere.kg)}</p>
+   126→          </div>
+   127→        </div>
+   128→      </Card>
+   129→
+   130→      {/* ─── Quick Stats Row (world-standard metrics) ─── */}
+   131→      <div className="mb-3 grid grid-cols-4 gap-1.5">
+   132→        <Card className="card-raised bg-card p-2 text-center">
+   133→          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Avg Sale</p>
+   134→          <p className="mt-0.5 text-xs font-bold tnum">{formatBirr(data.avgSale, cur)}</p>
+   135→        </Card>
+   136→        <Card className="card-raised bg-card p-2 text-center">
+   137→          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">vs Yesterday</p>
+   138→          <p className={cn("mt-0.5 text-xs font-bold tnum", data.revenueChange > 0 ? "text-emerald-400" : data.revenueChange < 0 ? "text-red-400" : "text-muted-foreground")}>
+   139→            {data.revenueChange > 0 ? "↑" : data.revenueChange < 0 ? "↓" : "—"} {Math.abs(data.revenueChange)}%
+   140→          </p>
+   141→        </Card>
+   142→        <Card className="card-raised bg-card p-2 text-center">
+   143→          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Week</p>
+   144→          <p className="mt-0.5 text-xs font-bold tnum">{formatBirr(data.weekRevenue, cur)}</p>
+   145→        </Card>
+   146→        <Card className="card-raised bg-card p-2 text-center">
+   147→          <p className="text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">Month</p>
+   148→          <p className="mt-0.5 text-xs font-bold tnum">{formatBirr(data.monthRevenue, cur)}</p>
+   149→        </Card>
+   150→      </div>
+   151→
+   152→      {/* ─── Recovery — full width, clear labels ─── */}
+   153→      <div className="mb-3">
+   154→        <PurchaseRecoveryCard sales={data.flow.todayRevenue} purchaseCost={data.flow.purchaseAmount} cur={cur} />
+   155→      </div>
+   156→
+   157→      {/* ─── Net Result — full width, clear labels ─── */}
+   158→      <div className="mb-3">
+   159→        <NetResultCard sales={data.flow.todayRevenue} purchaseCost={data.flow.purchaseAmount} expenses={data.flow.todayExpenses} cur={cur} />
+   160→      </div>
+   161→
+   162→      {/* ─── Stock Flow — single unified card ─── */}
+   163→      <StockFlowCard
+   164→        kgSold={data.flow.todayKgSold}
+   165→        kgBought={data.flow.purchaseKg}
+   166→        cur={cur}
+   167→      />
+   168→
+   169→      {/* ─── Today's Purchases — animal-type breakdown ─── */}
+   170→      {data.todayPurchases.count > 0 && (
+   171→        <TodayPurchasesCard purchases={data.todayPurchases} cur={cur} onOpen={() => go("PURCHASES")} />
+   172→      )}
+   173→
+   174→      {/* ─── Payment Split (compact % bar) ─── */}
+   175→      {data.methodSplit.length > 0 && data.today.revenue > 0 && (
+   176→        <Card className="mb-3 card-raised bg-card p-3">
+   177→          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Payment Split Today</p>
+   178→          <div className="flex h-2.5 overflow-hidden rounded-full bg-muted/60">
+   179→            {data.methodSplit.map((m) => {
+   180→              const colors: Record<string, string> = { CASH: "bg-emerald-500", MOBILE: "bg-sky-500", BANK: "bg-violet-500", CREDIT: "bg-amber-500" };
+   181→              return m.pct > 0 ? <div key={m.method} className={cn("h-full", colors[m.method] || "bg-muted")} style={{ width: `${m.pct}%` }} /> : null;
+   182→            })}
+   183→          </div>
+   184→          <div className="mt-2 flex flex-wrap gap-3 text-[10px]">
+   185→            {data.methodSplit.map((m) => {
+   186→              const colors: Record<string, string> = { CASH: "bg-emerald-400", MOBILE: "bg-sky-400", BANK: "bg-violet-400", CREDIT: "bg-amber-400" };
+   187→              const labels: Record<string, string> = { CASH: "Cash", MOBILE: "Mobile", BANK: "Bank", CREDIT: "Credit" };
+   188→              return (
+   189→                <span key={m.method} className="flex items-center gap-1">
+   190→                  <span className={cn("h-1.5 w-1.5 rounded-full", colors[m.method] || "bg-muted")} />
+   191→                  <span className="text-muted-foreground">{labels[m.method] || m.method}</span>
+   192→                  <span className="font-semibold tnum">{m.pct}%</span>
+   193→                </span>
+   194→              );
+   195→            })}
+   196→          </div>
+   197→        </Card>
+   198→      )}
+   199→
+   200→      {/* ─── Payment Methods ─── */}
+   201→      <div className="mb-2 mt-4 flex items-center justify-between px-1">
+   202→        <h2 className="text-sm font-semibold tracking-tight">Payment Methods</h2>
+   203→        <button onClick={() => go("MONEY")} className="shrink-0 text-xs font-medium text-primary">Money →</button>
+   204→      </div>
+   205→      <div className="mb-4 space-y-2">
+   206→        <AccountTreeCard method="CASH" label="Cash" tree={data.tree.CASH} currency={cur} tone="emerald" defaultOpen />
+   207→        <AccountTreeCard method="MOBILE" label="Mobile Money" tree={data.tree.MOBILE} currency={cur} tone="sky" defaultOpen />
+   208→        <AccountTreeCard method="BANK" label="Bank" tree={data.tree.BANK} currency={cur} tone="violet" defaultOpen />
+   209→      </div>
+   210→
+   211→      {/* ─── Top Products Today ─── */}
+   212→      {data.topProducts.length > 0 && (
+   213→        <TopProductsCard products={data.topProducts} cur={cur} onViewAll={() => go("PRODUCT_SALES")} />
+   214→      )}
+   215→
+   216→      {/* ─── Recent Activity ─── */}
+   217→      {data.recentSales.length > 0 && (
+   218→        <RecentActivityCard sales={data.recentSales} cur={cur} />
+   219→      )}
+   220→
+   221→      {/* ─── Debts + Supplier Balance (cross-module) ─── */}
+   222→      <div className="mb-3 grid grid-cols-2 gap-2">
+   223→        <Card className="card-raised bg-card p-3" onClick={() => go("CUSTOMER_DEBTS")}>
+   224→          <button className="block w-full text-left">
+   225→            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Customer Debts</p>
+   226→            <p className="mt-0.5 text-lg font-bold tnum leading-none text-amber-400">{formatBirr(data.debtsOutstanding, cur)}</p>
+   227→            <p className="mt-1 text-[10px] text-muted-foreground">outstanding →</p>
+   228→          </button>
+   229→        </Card>
+   230→        <Card className="card-raised bg-card p-3" onClick={() => go("SUPPLIER_LEDGER")}>
+   231→          <button className="block w-full text-left">
+   232→            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Supplier Balance</p>
+   233→            <p className="mt-0.5 text-lg font-bold tnum leading-none text-red-400">{formatBirr(data.supplierBalance, cur)}</p>
+   234→            <p className="mt-1 text-[10px] text-muted-foreground">we owe →</p>
+   235→          </button>
+   236→        </Card>
+   237→      </div>
+   238→
+   239→      {/* Cash session */}
+   240→      {data.openSession && (
+   241→        <Card className="mb-4 overflow-hidden card-raised">
+   242→          <div className="flex items-center justify-between bg-primary/5 p-4">
+   243→            <div className="flex items-center gap-3">
+   244→              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary">
+   245→                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="7" width="18" height="12" rx="2" /><circle cx="12" cy="13" r="2.5" /></svg>
+   246→              </div>
+   247→              <div>
+   248→                <div className="flex items-center gap-2">
+   249→                  <p className="text-sm font-semibold">Cash Drawer</p>
+   250→                  <Pill tone="good"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> OPEN</Pill>
+   251→                </div>
+   252→                <p className="text-[11px] text-muted-foreground">
+   253→                  Expected <span className="font-semibold tnum text-foreground">{formatBirr(data.openSession.expectedCash ?? data.openSession.opening, cur)}</span>
+   254→                  {" · "}opened {formatBirr(data.openSession.opening, cur)} · {formatTime(data.openSession.openedAt)}
+   255→                </p>
+   256→              </div>
+   257→            </div>
+   258→            <button onClick={() => go("CASH_CONTROL")} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground tap-scale">Close</button>
+   259→          </div>
+   260→        </Card>
+   261→      )}
+   262→
+   263→      {/* Empty state when no sales today */}
+   264→      {today.salesCount === 0 && (
+   265→        <Card className="mb-4 flex flex-col items-center justify-center p-8 text-center card-raised">
+   266→          <div className="mb-3 grid h-16 w-16 place-items-center rounded-2xl bg-muted/60 text-muted-foreground">
+   267→            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1.6" /><circle cx="18" cy="21" r="1.6" /><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6" /></svg>
+   268→          </div>
+   269→          <p className="text-sm font-semibold">No sales yet today</p>
+   270→          <p className="mt-1 max-w-xs text-xs text-muted-foreground">Your first sale of the day will appear here. Tap Sell to begin.</p>
+   271→          <button onClick={() => go("SELL")} className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground meat-glow tap-scale">Start Selling</button>
+   272→        </Card>
+   273→      )}
+   274→
+   275→      <div className="px-1 pb-2 text-center text-[10px] text-muted-foreground">
+   276→        MeatBook · Charcoal + Meat Red · Offline-first
+   277→      </div>
+   278→      <div className="px-1 text-center text-[10px] text-muted-foreground/70">{data.settings.shopName}</div>
+   279→    </div>
+   280→  );
+   281→}
+   282→
+   283→function QuickAction({ label, icon, onClick, tone }: { label: string; icon: React.ReactNode; onClick: () => void; tone?: "primary" }) {
+   284→  return (
+   285→    <button onClick={onClick} className={`flex flex-col items-center gap-1.5 rounded-2xl border border-border/60 p-3 tap-scale ${tone === "primary" ? "bg-primary text-primary-foreground meat-glow" : "bg-card/60 hover:bg-card"}`}>
+   286→      {icon}
+   287→      <span className="text-[11px] font-semibold">{label}</span>
+   288→    </button>
+   289→  );
+   290→}
+   291→
+   292→// ════════════════════════════════════════════════════════════════════════
+   293→// PURCHASE RECOVERY — full width, clear context
+   294→// ════════════════════════════════════════════════════════════════════════
+   295→function PurchaseRecoveryCard({ sales, purchaseCost, cur }: { sales: number; purchaseCost: number; cur: string }) {
+   296→  if (purchaseCost <= 0) {
+   297→    return (
+   298→      <Card className="card-raised bg-card p-3.5">
+   299→        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Purchase Recovery</p>
+   300→        <p className="mt-1.5 text-xl font-bold tnum text-muted-foreground">—</p>
+   301→        <p className="text-[11px] text-muted-foreground">No purchases today</p>
+   302→      </Card>
+   303→    );
+   304→  }
+   305→  const pct = (sales / purchaseCost) * 100;
+   306→  const diff = sales - purchaseCost;
+   307→  const isBreakEven = Math.abs(diff) < 0.005;
+   308→  const isAbove = diff > 0;
+   309→  const color = isBreakEven ? "#2563EB" : isAbove ? "#16803C" : "#C53030";
+   310→  return (
+   311→    <Card className="card-raised bg-card p-3.5">
+   312→      <div className="flex items-end justify-between">
+   313→        <div>
+   314→          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Purchase Recovery</p>
+   315→          <p className="mt-0.5 text-xl font-bold tnum leading-none" style={{ color }}>{pct.toFixed(1)}%</p>
+   316→          <p className="mt-0.5 text-[11px] text-muted-foreground">of purchase cost recovered by sales</p>
+   317→        </div>
+   318→        <div className="text-right">
+   319→          <p className="text-[11px] text-muted-foreground tnum">{formatBirr(sales, cur)} in</p>
+   320→          <p className="text-[11px] text-muted-foreground tnum">{formatBirr(purchaseCost, cur)} spent</p>
+   321→        </div>
+   322→      </div>
+   323→      <div className="relative mt-2.5 h-2 overflow-hidden rounded-full bg-muted/60">
+   324→        <div className="h-full rounded-full" style={{ width: `${Math.min(100, (pct / 200) * 100)}%`, backgroundColor: color }} />
+   325→        <div className="absolute left-1/2 top-0 h-full w-px bg-foreground/40" />
+   326→      </div>
+   327→      <p className="mt-2 text-[11px] font-medium" style={{ color }}>
+   328→        {isBreakEven
+   329→          ? "✓ Purchase cost fully recovered"
+   330→          : isAbove
+   331→          ? `+${formatBirr(diff, cur)} above purchase cost`
+   332→          : `−${formatBirr(Math.abs(diff), cur)} still needed to cover purchases`}
+   333→      </p>
+   334→    </Card>
+   335→  );
+   336→}
+   337→
+   338→// ════════════════════════════════════════════════════════════════════════
+   339→// NET RESULT — full width, clear context
+   340→// ════════════════════════════════════════════════════════════════════════
+   341→function NetResultCard({ sales, purchaseCost, expenses, cur }: { sales: number; purchaseCost: number; expenses: number; cur: string }) {
+   342→  const net = Math.round((sales - purchaseCost - expenses) * 100) / 100;
+   343→  const isZero = Math.abs(net) < 0.005;
+   344→  const isPositive = net > 0;
+   345→  const color = isZero ? "#2563EB" : isPositive ? "#16803C" : "#C53030";
+   346→  const label = isZero ? "Break Even" : isPositive ? "Profit" : "Loss";
+   347→  return (
+   348→    <Card className="card-raised bg-card p-3.5">
+   349→      <div className="flex items-end justify-between">
+   350→        <div>
+   351→          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Net Result</p>
+   352→          <p className="mt-0.5 text-xl font-bold tnum leading-none" style={{ color }}>
+   353→            {net < 0 ? "−" : isPositive ? "+" : ""}{formatBirr(Math.abs(net), cur)}
+   354→          </p>
+   355→          <p className="mt-0.5 text-[11px] font-medium" style={{ color }}>{label} today</p>
+   356→        </div>
+   357→        <div className="text-right space-y-0.5 text-[11px] tnum text-muted-foreground">
+   358→          <p>+ {formatBirr(sales, cur)} <span className="text-muted-foreground/60">sales</span></p>
+   359→          <p>− {formatBirr(purchaseCost, cur)} <span className="text-muted-foreground/60">purchase</span></p>
+   360→          <p>− {formatBirr(expenses, cur)} <span className="text-muted-foreground/60">expenses</span></p>
+   361→        </div>
+   362→      </div>
+   363→    </Card>
+   364→  );
+   365→}
+   366→
+   367→// ════════════════════════════════════════════════════════════════════════
+   368→// STOCK FLOW — single unified card: Bought → Sold → Remaining
+   369→// No duplicate numbers. One clear picture of today's meat flow.
+   370→// ════════════════════════════════════════════════════════════════════════
+   371→function StockFlowCard({ kgSold, kgBought, cur: _cur }: { kgSold: number; kgBought: number; cur: string }) {
+   372→  const remaining = Math.max(0, Math.round((kgBought - kgSold) * 100) / 100);
+   373→  const soldPct = kgBought > 0 ? Math.round((kgSold / kgBought) * 100) : 0;
+   374→  const barColor = soldPct >= 50 ? "bg-emerald-500" : soldPct > 0 ? "bg-amber-500" : "bg-muted-foreground/40";
+   375→
+   376→  return (
+   377→    <Card className="mb-3 card-raised bg-card p-3">
+   378→      <div className="mb-2 flex items-center justify-between">
+   379→        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Stock Flow Today</p>
+   380→        <span className="text-[10px] font-bold tnum text-muted-foreground">{soldPct}% sold</span>
+   381→      </div>
+   382→      {/* Three-column flow: Bought → Sold → Left */}
+   383→      <div className="grid grid-cols-3 gap-2 text-center">
+   384→        <div className="rounded-lg bg-amber-500/8 px-2 py-2">
+   385→          <p className="text-[9px] font-semibold uppercase tracking-wide text-amber-400">Bought</p>
+   386→          <p className="mt-0.5 text-sm font-bold tnum">{formatKg(kgBought)}</p>
+   387→        </div>
+   388→        <div className="rounded-lg bg-emerald-500/8 px-2 py-2">
+   389→          <p className="text-[9px] font-semibold uppercase tracking-wide text-emerald-400">Sold</p>
+   390→          <p className="mt-0.5 text-sm font-bold tnum">{formatKg(kgSold)}</p>
+   391→        </div>
+   392→        <div className="rounded-lg bg-muted/40 px-2 py-2">
+   393→          <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Left</p>
+   394→          <p className="mt-0.5 text-sm font-bold tnum">{formatKg(remaining)}</p>
+   395→        </div>
+   396→      </div>
+   397→      {/* Single progress bar — sold portion of bought */}
+   398→      {kgBought > 0 && (
+   399→        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/60">
+   400→          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, soldPct)}%` }} />
+   401→        </div>
+   402→      )}
+   403→    </Card>
+   404→  );
+   405→}
+   406→
+   407→// ════════════════════════════════════════════════════════════════════════
+   408→// Today's Purchases card — animal-type breakdown (Ox/Sheep/Goat)
+   409→// ════════════════════════════════════════════════════════════════════════
+   410→function TodayPurchasesCard({ purchases, cur, onOpen }: {
+   411→  purchases: DashboardData["todayPurchases"];
+   412→  cur: string;
+   413→  onOpen: () => void;
+   414→}) {
+   415→  return (
+   416→    <Card className="mb-4 overflow-hidden card-raised">
+   417→      <div className="flex items-center justify-between border-b border-border/60 bg-amber-500/5 px-4 py-2.5">
+   418→        <div className="flex items-center gap-2">
+   419→          <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-500/15 text-amber-400 text-xs font-bold">↓</span>
+   420→          <div>
+   421→            <h2 className="text-sm font-bold tracking-tight">Today&apos;s Purchases</h2>
+   422→            <p className="text-[11px] text-muted-foreground">{purchases.count} purchase{purchases.count > 1 ? "s" : ""} · {formatKg(purchases.totalKg)} · {formatBirr(purchases.total, cur)}</p>
+   423→          </div>
+   424→        </div>
+   425→        <button onClick={onOpen} className="text-[11px] font-medium text-primary">View →</button>
+   426→      </div>
+   427→      <div className="divide-y divide-border/40">
+   428→        {purchases.animalBreakdown.map((a) => (
+   429→          <div key={a.type} className="flex items-center gap-3 px-4 py-2.5">
+   430→            <span className={`grid h-9 w-9 place-items-center rounded-xl text-lg ring-1 ${animalTone(a.type)}`}>
+   431→              {animalEmoji(a.type)}
+   432→            </span>
+   433→            <div className="min-w-0 flex-1">
+   434→              <p className="text-sm font-semibold">{animalName(a.type)}{a.count > 1 ? ` ×${a.count}` : ""}</p>
+   435→              <p className="text-[11px] text-muted-foreground tnum">
+   436→                {formatKg(a.kg)} · {formatBirr(a.perKg, cur)}/kg cost
+   437→              </p>
+   438→            </div>
+   439→            <p className="shrink-0 text-sm font-bold tnum text-amber-400">−{formatBirr(a.amount, cur)}</p>
+   440→          </div>
+   441→        ))}
+   442→      </div>
+   443→    </Card>
+   444→  );
+   445→}
+   446→
+   447→// ════════════════════════════════════════════════════════════════════════
+   448→// TOP PRODUCTS — which meats are driving today's revenue
+   449→// ════════════════════════════════════════════════════════════════════════
+   450→function TopProductsCard({ products, cur, onViewAll }: { products: DashboardData["topProducts"]; cur: string; onViewAll: () => void }) {
+   451→  const maxRevenue = Math.max(...products.map((p) => p.revenue), 1);
+   452→  return (
+   453→    <Card className="mb-3 card-raised bg-card p-3.5">
+   454→      <div className="mb-2.5 flex items-center justify-between">
+   455→        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Top Products Today</p>
+   456→        <button onClick={onViewAll} className="text-[10px] font-medium text-primary">View All →</button>
+   457→      </div>
+   458→      <div className="space-y-2">
+   459→        {products.map((p, i) => (
+   460→          <div key={p.name} className="flex items-center gap-2.5">
+   461→            <span className="w-4 text-right text-[11px] font-bold tnum text-muted-foreground">{i + 1}</span>
+   462→            <div className="min-w-0 flex-1">
+   463→              <div className="flex items-center justify-between">
+   464→                <p className="truncate text-xs font-semibold">{p.name}</p>
+   465→                <p className="shrink-0 text-xs font-bold tnum">{formatBirr(p.revenue, cur)}</p>
+   466→              </div>
+   467→              <div className="mt-1 flex items-center gap-2">
+   468→                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/60">
+   469→                  <div className="h-full rounded-full bg-primary/60" style={{ width: `${(p.revenue / maxRevenue) * 100}%` }} />
+   470→                </div>
+   471→                <span className="shrink-0 text-[10px] text-muted-foreground tnum">{p.count}× · {formatKg(p.kg)}</span>
+   472→              </div>
+   473→            </div>
+   474→          </div>
+   475→        ))}
+   476→      </div>
+   477→    </Card>
+   478→  );
+   479→}
+   480→
+   481→// ════════════════════════════════════════════════════════════════════════
+   482→// RECENT ACTIVITY — last 5 sales today
+   483→// ════════════════════════════════════════════════════════════════════════
+   484→function RecentActivityCard({ sales, cur }: { sales: DashboardData["recentSales"]; cur: string }) {
+   485→  return (
+   486→    <Card className="mb-3 card-raised bg-card p-3.5">
+   487→      <div className="mb-2.5 flex items-center justify-between">
+   488→        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Recent Activity</p>
+   489→        <button onClick={() => useNav.getState().go("SALES_HISTORY")} className="text-[10px] font-medium text-primary">All →</button>
+   490→      </div>
+   491→      <div className="space-y-1.5">
+   492→        {sales.map((s) => (
+   493→          <div key={s.number} className="flex items-center gap-2.5 rounded-lg bg-muted/20 px-2.5 py-2">
+   494→            <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${s.type === "TAKE_HOME" ? "bg-amber-500/15 text-amber-400" : "bg-emerald-500/15 text-emerald-400"}`}>
+   495→              <span className="text-[9px] font-bold">{s.type === "TAKE_HOME" ? "OUT" : "IN"}</span>
+   496→            </div>
+   497→            <div className="min-w-0 flex-1">
+   498→              <p className="text-xs font-semibold tnum">#{s.number}</p>
+   499→              <p className="text-[10px] text-muted-foreground">
+   500→                {s.itemCount} item{s.itemCount > 1 ? "s" : ""} · {formatKg(s.totalKg)} · {s.cashierName || "—"}
+   501→              </p>
+   502→            </div>
+   503→            <div className="shrink-0 text-right">
+   504→              <p className="text-xs font-bold tnum text-emerald-400">+{formatBirr(s.total, cur)}</p>
+   505→              <p className="text-[10px] text-muted-foreground">
+   506→                {s.paymentMethod === "CASH" ? "Cash" : s.paymentMethod === "MOBILE" ? "Mobile" : "Bank"}
+   507→              </p>
+   508→            </div>
+   509→          </div>
+   510→        ))}
+   511→      </div>
+   512→    </Card>
+   513→  );
+   514→}
+   515→
+   516→function HomeSkeleton() {
+   517→  return (
+   518→    <div className="mx-auto w-full max-w-2xl px-4 pb-28 pt-3">
+   519→      <div className="mb-5 grid grid-cols-4 gap-2.5">
+   520→        {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted/50" />)}
+   521→      </div>
+   522→      <div className="mb-4 h-40 animate-pulse rounded-2xl bg-muted/50" />
+   523→      <div className="mb-5 grid grid-cols-3 gap-2.5">
+   524→        {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted/50" />)}
+   525→      </div>
+   526→    </div>
+   527→  );
+   528→}
+   529→

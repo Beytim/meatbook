@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PeriodTabs, SearchInput, EmptyState, Pill, PageScaffold, ListSkeleton, Kg } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
+import { t as translate, type Lang } from "@/lib/i18n";
 
 interface WastageEntry {
   id: string;
@@ -28,9 +30,20 @@ interface WastageResp {
 }
 
 const REASONS = ["Spoilt", "Dropped", "Used in prep", "Expired", "Other"];
+function reasonKey(r: string): string {
+  if (r === "Spoilt") return "wastage.reasons.spoiled";
+  if (r === "Dropped") return "wastage.reasons.dropped";
+  if (r === "Used in prep" || r === "Trimming") return "wastage.reasons.trimming";
+  if (r === "Expired" || r === "Burnt") return "wastage.reasons.burnt";
+  return "wastage.reasons.other";
+}
+function reasonLabel(r: string, lang: Lang = "en"): string {
+  return translate(reasonKey(r), lang);
+}
 
 export function WastageView() {
   const { back } = useNav();
+  const { t, lang } = useLang();
   const [period, setPeriod] = React.useState<PeriodKey>("TODAY");
   const [q, setQ] = React.useState("");
   const [recordOpen, setRecordOpen] = React.useState(false);
@@ -49,13 +62,13 @@ export function WastageView() {
 
   return (
     <PageScaffold
-      title="Wastage"
-      subtitle="Record wasted meat — no inventory deduction"
+      title={t("wastage.title")}
+      subtitle={t("wastage.subtitle")}
       onBack={() => back()}
       right={
         <Button size="sm" onClick={() => setRecordOpen(true)} className="bg-primary text-primary-foreground">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-          Record
+          {t("wastage.record")}
         </Button>
       }
     >
@@ -65,29 +78,29 @@ export function WastageView() {
 
       <div className="mb-3 grid grid-cols-2 gap-2">
         <Card className="card-raised bg-card p-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Wasted</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("wastage.totalWasted")}</p>
           <p className="mt-0.5 text-base font-bold tnum text-red-400"><Kg kg={stats?.totalKg ?? 0} /></p>
         </Card>
         <Card className="card-raised bg-card p-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Entries</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("wastage.entries")}</p>
           <p className="mt-0.5 text-base font-bold tnum">{stats?.count ?? 0}</p>
         </Card>
       </div>
 
-      <SearchInput value={q} onChange={setQ} placeholder="Search product, reason, note…" className="mb-3" />
+      <SearchInput value={q} onChange={setQ} placeholder={`${t("common.search")}…`} className="mb-3" />
 
       {isLoading ? (
         <ListSkeleton rows={4} />
       ) : entries.length === 0 ? (
         <EmptyState
           icon={<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M16 5a3.5 3.5 0 0 1 0 5l-5 5a3.5 3.5 0 0 1-5-5l5-5a3.5 3.5 0 0 1 5 0z M9 9l6 6" /></svg>}
-          title="No wastage recorded yet"
-          description="Record any wasted meat here — spoilt, dropped, or used in preparation."
-          action={<Button onClick={() => setRecordOpen(true)} className="bg-primary text-primary-foreground">Record Waste</Button>}
+          title={t("wastage.empty")}
+          description={t("wastage.subtitle")}
+          action={<Button onClick={() => setRecordOpen(true)} className="bg-primary text-primary-foreground">{t("wastage.record")}</Button>}
         />
       ) : (
         <div className="space-y-2">
-          {entries.map((e) => <WastageRow key={e.id} entry={e} />)}
+          {entries.map((e) => <WastageRow key={e.id} entry={e} lang={lang} />)}
         </div>
       )}
 
@@ -97,7 +110,8 @@ export function WastageView() {
 }
 
 // ─── Row with delete ─────────────────────────────────────────────────
-function WastageRow({ entry: e }: { entry: WastageEntry }) {
+function WastageRow({ entry: e, lang }: { entry: WastageEntry; lang: Lang }) {
+  const { t } = useLang();
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = React.useState(false);
   const del = useMutation({
@@ -106,11 +120,11 @@ function WastageRow({ entry: e }: { entry: WastageEntry }) {
       if (!r.ok) throw new Error("failed");
     },
     onSuccess: () => {
-      toast.success("Waste entry deleted");
+      toast.success(t("wastage.recorded"));
       qc.invalidateQueries({ queryKey: ["wastage"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
-    onError: () => toast.error("Could not delete"),
+    onError: () => toast.error(t("saleFailed")),
   });
   return (
     <Card className="card-raised bg-card p-3">
@@ -127,22 +141,23 @@ function WastageRow({ entry: e }: { entry: WastageEntry }) {
         </div>
         <div className="shrink-0 text-right">
           <p className="text-sm font-bold tnum text-red-400">−<Kg kg={e.kg} /></p>
-          {e.reason && <Pill tone="bad" className="mt-0.5">{e.reason}</Pill>}
+          {e.reason && <Pill tone="bad" className="mt-0.5">{reasonLabel(e.reason, lang)}</Pill>}
         </div>
       </div>
       {confirmDel ? (
         <div className="mt-2 flex gap-2">
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmDel(false)}>Cancel</Button>
-          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => del.mutate()} disabled={del.isPending}>{del.isPending ? "Deleting…" : "Confirm Delete"}</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmDel(false)}>{t("common.cancel")}</Button>
+          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => del.mutate()} disabled={del.isPending}>{del.isPending ? t("common.loading") : `${t("common.confirm")} ${t("common.delete")}`}</Button>
         </div>
       ) : (
-        <button onClick={() => setConfirmDel(true)} className="mt-1.5 text-[10px] font-medium text-red-400/70 hover:text-red-400">Delete</button>
+        <button onClick={() => setConfirmDel(true)} className="mt-1.5 text-[10px] font-medium text-red-400/70 hover:text-red-400">{t("common.delete")}</button>
       )}
     </Card>
   );
 }
 
 function RecordWastageDialog({ open, onOpenChange, period: _period }: { open: boolean; onOpenChange: (o: boolean) => void; period: PeriodKey }) {
+  const { t, lang } = useLang();
   const qc = useQueryClient();
   const [name, setName] = React.useState("");
   const [kg, setKg] = React.useState("");
@@ -164,51 +179,51 @@ function RecordWastageDialog({ open, onOpenChange, period: _period }: { open: bo
       return r.json();
     },
     onSuccess: () => {
-      toast.success("Wastage recorded");
+      toast.success(t("wastage.recorded"));
       qc.invalidateQueries({ queryKey: ["wastage"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       reset();
       onOpenChange(false);
     },
-    onError: () => toast.error("Could not save"),
+    onError: () => toast.error(t("saleFailed")),
   });
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Record Waste</DialogTitle>
-          <DialogDescription className="sr-only">Record wasted meat with weight and reason.</DialogDescription>
+          <DialogTitle>{t("wastage.record")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("wastage.subtitle")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
-            <Label className="text-xs">Product / meat type</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Meat, Liver, Ribs" className="mt-1" autoFocus />
+            <Label className="text-xs">{t("wastage.product")}</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="…" className="mt-1" autoFocus />
           </div>
           <div>
-            <Label className="text-xs">Weight (kg)</Label>
-            <Input value={kg} onChange={(e) => setKg(e.target.value)} inputMode="decimal" placeholder="e.g. 2.5" className="mt-1 tnum" />
+            <Label className="text-xs">{t("wastage.weight")}</Label>
+            <Input value={kg} onChange={(e) => setKg(e.target.value)} inputMode="decimal" placeholder="2.5" className="mt-1 tnum" />
           </div>
           <div>
-            <Label className="text-xs">Reason</Label>
+            <Label className="text-xs">{t("wastage.reason")}</Label>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {REASONS.map((r) => (
                 <button key={r} type="button" onClick={() => setReason(r)}
                   className={cn("rounded-lg px-3 py-1.5 text-xs font-semibold tap-scale", reason === r ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-                  {r}
+                  {reasonLabel(r, lang)}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <Label className="text-xs">Note (optional)</Label>
+            <Label className="text-xs">{t("wastage.note")}</Label>
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="mt-1" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending || !canSave} className="bg-primary text-primary-foreground">
-            {save.isPending ? "Saving…" : "Save"}
+            {save.isPending ? t("common.loading") : t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

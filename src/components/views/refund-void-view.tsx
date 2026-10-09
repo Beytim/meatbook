@@ -24,6 +24,8 @@ import {
   PageScaffold, ListSkeleton, Money, Kg,
 } from "@/components/app/primitives";
 import { ReceiptDialog } from "@/components/views/receipts-view";
+import { useLang } from "@/components/lang-provider";
+import { t as translate, type Lang } from "@/lib/i18n";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface SaleItem { name: string; unitPrice: number; kg: number; total: number; }
@@ -57,22 +59,25 @@ interface Settings {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
-const STATUS_LABEL: Record<SaleStatus, string> = {
-  COMPLETED: "Completed",
-  VOIDED: "Voided",
-  REFUNDED: "Refunded",
-};
+function useStatusLabel(): Record<SaleStatus, string> {
+  const { t } = useLang();
+  return {
+    COMPLETED: t("salesHistory.completed"),
+    VOIDED: t("salesHistory.voided"),
+    REFUNDED: t("salesHistory.refunded"),
+  };
+}
 const STATUS_TONE: Record<SaleStatus, "good" | "bad" | "warn"> = {
   COMPLETED: "good",
   VOIDED: "bad",
   REFUNDED: "warn",
 };
 
-function paymentLabel(method: string, detail?: string | null): string {
+function paymentLabelT(method: string, detail?: string | null, lang: Lang = "en"): string {
   const m = (method || "").toUpperCase();
-  if (m === "CASH") return "Cash";
-  if (m === "MOBILE") return `Mobile${detail ? ` · ${detail}` : ""}`;
-  if (m === "BANK") return `Bank${detail ? ` · ${detail}` : ""}`;
+  if (m === "CASH") return translate("sell.cash", lang);
+  if (m === "MOBILE") return `${translate("sell.mobile", lang)}${detail ? ` · ${detail}` : ""}`;
+  if (m === "BANK") return `${translate("sell.bank", lang)}${detail ? ` · ${detail}` : ""}`;
   return method || "—";
 }
 
@@ -85,6 +90,8 @@ async function fetchSales(period: PeriodKey, q: string): Promise<SalesResp> {
 // ─── View ───────────────────────────────────────────────────────────────
 export function RefundVoidView() {
   const { back } = useNav();
+  const { t, lang } = useLang();
+  const statusLabel = useStatusLabel();
   const qc = useQueryClient();
   const [period, setPeriod] = React.useState<PeriodKey>("TODAY");
   const [q, setQ] = React.useState("");
@@ -95,8 +102,8 @@ export function RefundVoidView() {
   // Debounce search
   const [debouncedQ, setDebouncedQ] = React.useState(q);
   React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q), 250);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setDebouncedQ(q), 250);
+    return () => clearTimeout(tm);
   }, [q]);
 
   // Single fetch — no status filter. We split into Voidable (COMPLETED) and
@@ -129,8 +136,8 @@ export function RefundVoidView() {
 
   return (
     <PageScaffold
-      title="Refund / Void"
-      subtitle="Reverse or refund completed sales"
+      title={t("refundVoid.title")}
+      subtitle={t("refundVoid.subtitle")}
       onBack={() => back()}
     >
       <div className="mb-4">
@@ -144,17 +151,17 @@ export function RefundVoidView() {
       <SearchInput
         value={q}
         onChange={setQ}
-        placeholder="Search sale #, product, cashier…"
+        placeholder={`${t("common.search")}…`}
         className="mb-4"
       />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as "VOIDABLE" | "DONE")} className="mb-3">
         <TabsList className="w-full">
           <TabsTrigger value="VOIDABLE" className="flex-1">
-            Voidable <span className="ml-1 tnum text-[10px] text-muted-foreground">({voidable.length})</span>
+            {t("refundVoid.voidable")} <span className="ml-1 tnum text-[10px] text-muted-foreground">({voidable.length})</span>
           </TabsTrigger>
           <TabsTrigger value="DONE" className="flex-1">
-            Refunded / Voided <span className="ml-1 tnum text-[10px] text-muted-foreground">({done.length})</span>
+            {t("refundVoid.reversed")} <span className="ml-1 tnum text-[10px] text-muted-foreground">({done.length})</span>
           </TabsTrigger>
         </TabsList>
 
@@ -168,8 +175,8 @@ export function RefundVoidView() {
                   <path d="M9 12l2 2 4-4" /><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
                 </svg>
               }
-              title="No voidable sales in this period."
-              description="Completed sales will show up here so you can void or refund them."
+              title={t("refundVoid.empty")}
+              description={t("refundVoid.subtitle")}
             />
           ) : (
             <div className="space-y-2.5">
@@ -179,6 +186,8 @@ export function RefundVoidView() {
                   sale={s}
                   onView={() => setOpenId(s.id)}
                   onAction={(action) => setConfirm({ sale: s, action })}
+                  statusLabel={statusLabel}
+                  lang={lang}
                 />
               ))}
             </div>
@@ -196,13 +205,13 @@ export function RefundVoidView() {
                   <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                 </svg>
               }
-              title="No refunded or voided sales."
-              description="Reversed sales will be archived here with their final status."
+              title={t("refundVoid.empty")}
+              description={t("refundVoid.subtitle")}
             />
           ) : (
             <div className="space-y-2.5">
               {done.map((s) => (
-                <DoneCard key={s.id} sale={s} onView={() => setOpenId(s.id)} />
+                <DoneCard key={s.id} sale={s} onView={() => setOpenId(s.id)} statusLabel={statusLabel} lang={lang} />
               ))}
             </div>
           )}
@@ -213,6 +222,7 @@ export function RefundVoidView() {
         id={openId}
         onClose={() => setOpenId(null)}
         settings={settingsData?.settings}
+        lang={lang}
       />
 
       <ConfirmDialog
@@ -232,11 +242,16 @@ function VoidableCard({
   sale,
   onView,
   onAction,
+  statusLabel,
+  lang,
 }: {
   sale: Sale;
   onView: () => void;
   onAction: (action: "VOID" | "REFUND") => void;
+  statusLabel: Record<SaleStatus, string>;
+  lang: Lang;
 }) {
+  const { t } = useLang();
   const isTakeHome = sale.type === "TAKE_HOME";
   const itemCount = sale.items.length;
   return (
@@ -263,7 +278,7 @@ function VoidableCard({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-bold tnum">#{sale.number}</p>
-                <Pill tone="good">{STATUS_LABEL[sale.status]}</Pill>
+                <Pill tone="good">{statusLabel[sale.status]}</Pill>
               </div>
               <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                 {formatDateTime(sale.createdAt)} · {sale.cashierName || "—"}
@@ -273,14 +288,14 @@ function VoidableCard({
           <div className="shrink-0 text-right">
             <p className="text-sm font-bold tnum"><Money amount={sale.total} /></p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {paymentLabel(sale.paymentMethod, sale.paymentDetail)}
+              {paymentLabelT(sale.paymentMethod, sale.paymentDetail, lang)}
             </p>
           </div>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Pill tone={isTakeHome ? "warn" : "good"}>{isTakeHome ? "Take Home" : "Eat Here"}</Pill>
+          <Pill tone={isTakeHome ? "warn" : "good"}>{isTakeHome ? t("sell.takeHome") : t("sell.eatHere")}</Pill>
           <span className="text-[11px] text-muted-foreground">
-            {itemCount} {itemCount === 1 ? "item" : "items"} · <Kg kg={sale.totalKg} />
+            {itemCount} {itemCount === 1 ? t("common.item") : t("common.items")} · <Kg kg={sale.totalKg} />
           </span>
         </div>
       </div>
@@ -289,19 +304,19 @@ function VoidableCard({
           onClick={onView}
           className="bg-card px-2 py-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/40 hover:text-foreground tap-scale"
         >
-          View
+          {t("common.view")}
         </button>
         <button
           onClick={() => onAction("VOID")}
           className="bg-card px-2 py-2.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 tap-scale"
         >
-          Void
+          {t("refundVoid.void")}
         </button>
         <button
           onClick={() => onAction("REFUND")}
           className="bg-card px-2 py-2.5 text-xs font-semibold text-amber-400 hover:bg-amber-500/10 tap-scale"
         >
-          Refund
+          {t("refundVoid.refund")}
         </button>
       </div>
     </Card>
@@ -309,7 +324,8 @@ function VoidableCard({
 }
 
 // ─── Done (refunded/voided) card ────────────────────────────────────────
-function DoneCard({ sale, onView }: { sale: Sale; onView: () => void }) {
+function DoneCard({ sale, onView, statusLabel, lang }: { sale: Sale; onView: () => void; statusLabel: Record<SaleStatus, string>; lang: Lang }) {
+  const { t } = useLang();
   const isTakeHome = sale.type === "TAKE_HOME";
   const isVoided = sale.status === "VOIDED";
   const itemCount = sale.items.length;
@@ -335,7 +351,7 @@ function DoneCard({ sale, onView }: { sale: Sale; onView: () => void }) {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-bold tnum">#{sale.number}</p>
-                <Pill tone={STATUS_TONE[sale.status]}>{STATUS_LABEL[sale.status]}</Pill>
+                <Pill tone={STATUS_TONE[sale.status]}>{statusLabel[sale.status]}</Pill>
               </div>
               <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                 {formatDateTime(sale.createdAt)} · {sale.cashierName || "—"}
@@ -347,14 +363,14 @@ function DoneCard({ sale, onView }: { sale: Sale; onView: () => void }) {
               <Money amount={sale.total} />
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {paymentLabel(sale.paymentMethod, sale.paymentDetail)}
+              {paymentLabelT(sale.paymentMethod, sale.paymentDetail, lang)}
             </p>
           </div>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Pill tone={isVoided ? "muted" : isTakeHome ? "warn" : "good"}>{isTakeHome ? "Take Home" : "Eat Here"}</Pill>
+          <Pill tone={isVoided ? "muted" : isTakeHome ? "warn" : "good"}>{isTakeHome ? t("sell.takeHome") : t("sell.eatHere")}</Pill>
           <span className="text-[11px] text-muted-foreground">
-            {itemCount} {itemCount === 1 ? "item" : "items"} · <Kg kg={sale.totalKg} />
+            {itemCount} {itemCount === 1 ? t("common.item") : t("common.items")} · <Kg kg={sale.totalKg} />
           </span>
         </div>
       </button>
@@ -372,6 +388,7 @@ function ConfirmDialog({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useLang();
   const [note, setNote] = React.useState("");
   const action = state?.action;
   const sale = state?.sale;
@@ -399,13 +416,13 @@ function ConfirmDialog({
     onSuccess: () => {
       toast.success(
         action === "VOID"
-          ? `Sale #${sale?.number} voided`
-          : `Sale #${sale?.number} refunded`,
+          ? `${t("refundVoid.voided")} #${sale?.number}`
+          : `${t("refundVoid.refunded")} #${sale?.number}`,
       );
       onSuccess();
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Failed to update sale");
+      toast.error(err.message || t("saleFailed"));
     },
   });
 
@@ -425,32 +442,29 @@ function ConfirmDialog({
                 <path d="M12 9v4M12 17h.01" /><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               </svg>
             </span>
-            {isVoid ? "Void this sale?" : "Refund this sale?"}
+            {isVoid ? t("refundVoid.voidConfirm") : t("refundVoid.refundConfirm")}
           </DialogTitle>
           <DialogDescription>
-            This action is <span className="font-semibold text-foreground">irreversible</span>. The sale
-            {" #"}<span className="tnum font-semibold text-foreground">{sale?.number}</span> for{" "}
-            <span className="tnum font-semibold text-foreground">{formatBirr(sale?.total ?? 0)}</span> will
-            be marked as {isVoid ? "voided" : "refunded"} and removed from your revenue.
+            {t("refundVoid.irreversible")}. #{sale?.number} · {formatBirr(sale?.total ?? 0)}.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2">
           <Label htmlFor="rv-note" className="text-xs text-muted-foreground">
-            Reason / note <span className="opacity-70">(optional)</span>
+            {t("refundVoid.reason")}
           </Label>
           <Textarea
             id="rv-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={isVoid ? "e.g. customer cancelled, wrong items…" : "e.g. customer returned, partial complaint…"}
+            placeholder="…"
             rows={3}
           />
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             onClick={() => mutation.mutate()}
@@ -460,7 +474,7 @@ function ConfirmDialog({
               isVoid ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600",
             )}
           >
-            {mutation.isPending ? "Saving…" : isVoid ? "Void sale" : "Refund sale"}
+            {mutation.isPending ? t("common.loading") : isVoid ? t("refundVoid.voidSale") : t("refundVoid.refundSale")}
           </Button>
         </DialogFooter>
       </DialogContent>

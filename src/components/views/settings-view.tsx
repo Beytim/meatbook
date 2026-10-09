@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   PageScaffold, SectionHeader, Pill, ListSkeleton,
 } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface Settings {
@@ -37,10 +38,10 @@ interface Settings {
 interface SettingsResp { settings: Settings }
 
 // ─── Quick-link pills (top of Settings) ─────────────────────────────────
-const QUICK_LINKS: { view: ViewId; label: string; icon: React.ReactNode }[] = [
+const QUICK_LINKS: { view: ViewId; labelKey: string; icon: React.ReactNode }[] = [
   {
     view: "STAFF",
-    label: "Staff",
+    labelKey: "staff.title",
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="9" cy="7" r="4" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /><path d="M16 11h6M19 8v6" />
@@ -49,7 +50,7 @@ const QUICK_LINKS: { view: ViewId; label: string; icon: React.ReactNode }[] = [
   },
   {
     view: "BACKUP",
-    label: "Backup",
+    labelKey: "backup.title",
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6" /><path d="m7 9 5-5 5 5" /><path d="M12 4v12" />
@@ -58,7 +59,7 @@ const QUICK_LINKS: { view: ViewId; label: string; icon: React.ReactNode }[] = [
   },
   {
     view: "LICENSE",
-    label: "License",
+    labelKey: "license.title",
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M20 7h-9" /><path d="M14 17H5" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" />
@@ -67,7 +68,7 @@ const QUICK_LINKS: { view: ViewId; label: string; icon: React.ReactNode }[] = [
   },
   {
     view: "DEVICE",
-    label: "Device",
+    labelKey: "device.title",
     icon: (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect width="20" height="14" x="2" y="3" rx="2" /><path d="M8 21h8" /><path d="M12 17v4" />
@@ -109,6 +110,7 @@ export function SettingsView() {
   const { back, go } = useNav();
   const { theme, setTheme } = useTheme();
   const qc = useQueryClient();
+  const { t } = useLang();
 
   const { data, isLoading } = useQuery<SettingsResp>({
     queryKey: ["settings"],
@@ -208,7 +210,7 @@ export function SettingsView() {
 
   return (
     <PageScaffold
-      title="Settings"
+      title={t("settings.title")}
       subtitle="Shop, payments, expenses, appearance & security"
       onBack={() => back()}
     >
@@ -224,7 +226,7 @@ export function SettingsView() {
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary">
                 {q.icon}
               </span>
-              <span className="text-xs font-medium">{q.label}</span>
+              <span className="text-xs font-medium">{t(q.labelKey)}</span>
             </button>
           </Card>
         ))}
@@ -236,14 +238,14 @@ export function SettingsView() {
         <>
           {/* ── Shop section ─────────────────────────────────────────── */}
           <div className="mb-3">
-            <SectionHeader title="Shop" subtitle="Identity, contact & receipt branding" />
+            <SectionHeader title={t("settings.shop")} subtitle="Identity, contact & receipt branding" />
           </div>
           <Card className="mb-5 p-4 card-raised">
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               Shop Identity
             </p>
             <div className="mt-3 space-y-3">
-              <Field label="Shop Name">
+              <Field label={t("settings.shopName")}>
                 <Input
                   value={shop.shopName}
                   onChange={(e) => {
@@ -253,7 +255,7 @@ export function SettingsView() {
                   placeholder="Kera Fresh Meat Shop"
                 />
               </Field>
-              <Field label="Phone">
+              <Field label={t("settings.shopPhone")}>
                 <Input
                   value={shop.shopPhone}
                   onChange={(e) => {
@@ -263,7 +265,7 @@ export function SettingsView() {
                   placeholder="+251 911 000 000"
                 />
               </Field>
-              <Field label="Address">
+              <Field label={t("settings.shopAddress")}>
                 <Input
                   value={shop.shopAddress}
                   onChange={(e) => {
@@ -278,10 +280,10 @@ export function SettingsView() {
             <Separator className="my-4" />
 
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Receipt
+              {t("settings.receipt")}
             </p>
             <div className="mt-3 space-y-3">
-              <Field label="Receipt Header">
+              <Field label={t("settings.receiptHeader")}>
                 <Input
                   value={shop.receiptHeader}
                   onChange={(e) => {
@@ -291,7 +293,7 @@ export function SettingsView() {
                   placeholder="Kera Fresh Meat Shop"
                 />
               </Field>
-              <Field label="Receipt Footer">
+              <Field label={t("settings.receiptFooter")}>
                 <Textarea
                   value={shop.receiptFooter}
                   onChange={(e) => {
@@ -302,7 +304,7 @@ export function SettingsView() {
                   className="min-h-20"
                 />
               </Field>
-              <Field label="Currency Symbol">
+              <Field label={t("settings.currency")}>
                 <Input
                   value={shop.currency}
                   onChange={(e) => {
@@ -328,7 +330,7 @@ export function SettingsView() {
 
           {/* ── Appearance section ───────────────────────────────────── */}
           <div className="mb-3">
-            <SectionHeader title="Appearance" subtitle="Theme & visual mode" />
+            <SectionHeader title={t("settings.appearance")} subtitle="Theme & visual mode" />
           </div>
           <Card className="mb-5 p-4 card-raised">
             <div className="flex items-center gap-3">
@@ -348,7 +350,7 @@ export function SettingsView() {
               <ThemeButton
                 active={theme === "dark"}
                 onClick={() => setTheme("dark")}
-                label="Dark"
+                label={t("settings.darkTheme")}
                 description="Charcoal + Meat Red"
                 icon={
                   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -359,7 +361,7 @@ export function SettingsView() {
               <ThemeButton
                 active={theme === "light"}
                 onClick={() => setTheme("light")}
-                label="Light"
+                label={t("settings.lightTheme")}
                 description="Bright & airy"
                 icon={
                   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -429,7 +431,7 @@ export function SettingsView() {
 
           {/* ── Payments section (informational) ─────────────────────── */}
           <div className="mb-3">
-            <SectionHeader title="Payments" subtitle="Accepted payment methods" />
+            <SectionHeader title={t("settings.payments")} subtitle="Accepted payment methods" />
           </div>
           <div className="mb-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             {PAYMENT_METHODS.map((m) => (
@@ -447,7 +449,7 @@ export function SettingsView() {
 
           {/* ── Expenses section (informational) ─────────────────────── */}
           <div className="mb-3">
-            <SectionHeader title="Expenses" subtitle="Default expense categories" />
+            <SectionHeader title={t("settings.expenses")} subtitle="Default expense categories" />
           </div>
           <Card className="mb-5 p-4 card-raised">
             <div className="flex flex-wrap gap-2">

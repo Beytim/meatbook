@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { PeriodTabs, SearchInput, EmptyState, Pill, PageScaffold, ListSkeleton, Money } from "@/components/app/primitives";
 import { AccountProviderSelect } from "@/components/app/account-provider-select";
 import type { PaymentMethod } from "@/lib/accounts";
+import { useLang } from "@/components/lang-provider";
+import { t as translate, type Lang } from "@/lib/i18n";
 
 interface Debt {
   id: string;
@@ -29,8 +31,16 @@ interface Debt {
   payments: { id: string; amount: number; paymentMethod: string; paymentDetail: string | null; note: string | null; createdAt: string }[];
 }
 
+function paymentLabelT(method: string, detail?: string | null, lang: Lang = "en"): string {
+  if (method === "CASH") return translate("sell.cash", lang);
+  if (method === "MOBILE") return `${translate("sell.mobile", lang)}${detail ? ` · ${detail}` : ""}`;
+  if (method === "BANK") return `${translate("sell.bank", lang)}${detail ? ` · ${detail}` : ""}`;
+  return method;
+}
+
 export function CustomerDebtsView() {
   const { back } = useNav();
+  const { t, lang } = useLang();
   const [q, setQ] = React.useState("");
   const [filter, setFilter] = React.useState<"OPEN" | "SETTLED" | "ALL">("OPEN");
   const [addOpen, setAddOpen] = React.useState(false);
@@ -52,13 +62,13 @@ export function CustomerDebtsView() {
 
   return (
     <PageScaffold
-      title="Customer Debts"
-      subtitle="Money owed to the shop by customers"
+      title={t("debts.title")}
+      subtitle={t("debts.subtitle")}
       onBack={() => back()}
       right={
         <Button size="sm" onClick={() => setAddOpen(true)} className="bg-primary text-primary-foreground">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-          Add Debt
+          {t("debts.add")}
         </Button>
       }
     >
@@ -66,11 +76,11 @@ export function CustomerDebtsView() {
       <Card className="mb-3 card-raised bg-card p-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Outstanding</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("debts.totalOutstanding")}</p>
             <p className="mt-0.5 text-xl font-bold tnum text-amber-400">{formatBirr(data?.totalOutstanding ?? 0)}</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-muted-foreground">{debts.filter((d) => d.status === "OPEN").length} open debts</p>
+            <p className="text-[10px] text-muted-foreground">{debts.filter((d) => d.status === "OPEN").length} {t("debts.outstanding").toLowerCase()}</p>
           </div>
         </div>
       </Card>
@@ -80,26 +90,26 @@ export function CustomerDebtsView() {
         {(["OPEN", "SETTLED", "ALL"] as const).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
             className={cn("rounded-full px-3 py-1.5 text-xs font-semibold tap-scale", filter === f ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {f === "OPEN" ? "Outstanding" : f === "SETTLED" ? "Settled" : "All"}
+            {f === "OPEN" ? t("debts.outstanding") : f === "SETTLED" ? t("debts.settled") : t("debts.all")}
           </button>
         ))}
       </div>
 
-      <SearchInput value={q} onChange={setQ} placeholder="Search customer or note…" className="mb-3" />
+      <SearchInput value={q} onChange={setQ} placeholder={`${t("common.search")}…`} className="mb-3" />
 
       {isLoading ? (
         <ListSkeleton rows={4} />
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2 M9.5 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" /></svg>}
-          title="No debts"
-          description="Record a debt when a customer takes meat on credit."
-          action={<Button onClick={() => setAddOpen(true)} className="bg-primary text-primary-foreground">Add Debt</Button>}
+          title={t("debts.empty")}
+          description={t("debts.subtitle")}
+          action={<Button onClick={() => setAddOpen(true)} className="bg-primary text-primary-foreground">{t("debts.add")}</Button>}
         />
       ) : (
         <div className="space-y-2">
           {filtered.map((d) => (
-            <DebtRow key={d.id} debt={d} />
+            <DebtRow key={d.id} debt={d} lang={lang} />
           ))}
         </div>
       )}
@@ -109,7 +119,8 @@ export function CustomerDebtsView() {
   );
 }
 
-function DebtRow({ debt }: { debt: Debt }) {
+function DebtRow({ debt, lang }: { debt: Debt; lang: Lang }) {
+  const { t } = useLang();
   const [payOpen, setPayOpen] = React.useState(false);
   const [detailOpen, setDetailOpen] = React.useState(false);
   const isSettled = debt.status === "SETTLED";
@@ -131,16 +142,16 @@ function DebtRow({ debt }: { debt: Debt }) {
             </div>
             <div className="shrink-0 text-right">
               <p className={cn("text-sm font-bold tnum", isSettled ? "text-emerald-400" : "text-amber-400")}>
-                {isSettled ? "Settled" : formatBirr(debt.balance)}
+                {isSettled ? t("debts.settled") : formatBirr(debt.balance)}
               </p>
-              <Pill tone={isSettled ? "good" : "warn"} className="mt-0.5">{isSettled ? "Paid" : "Outstanding"}</Pill>
+              <Pill tone={isSettled ? "good" : "warn"} className="mt-0.5">{isSettled ? t("debts.paid") : t("debts.outstanding")}</Pill>
             </div>
           </div>
           {/* Payment progress bar */}
           <div className="mt-2">
             <div className="mb-0.5 flex items-center justify-between text-[10px] text-muted-foreground tnum">
-              <span>{formatBirr(debt.paid)} paid</span>
-              <span>of {formatBirr(debt.amount)}</span>
+              <span>{formatBirr(debt.paid)} {t("debts.paid").toLowerCase()}</span>
+              <span>{t("debts.original").toLowerCase()} {formatBirr(debt.amount)}</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-muted/60">
               <div className={cn("h-full rounded-full", isSettled ? "bg-emerald-500" : "bg-amber-500")} style={{ width: `${pct}%` }} />
@@ -149,18 +160,19 @@ function DebtRow({ debt }: { debt: Debt }) {
         </button>
         {!isSettled && (
           <button onClick={() => setPayOpen(true)} className="mt-2 w-full rounded-lg bg-emerald-500/15 py-2 text-xs font-semibold text-emerald-400 tap-scale">
-            Record Payment
+            {t("debts.recordPayment")}
           </button>
         )}
       </Card>
 
-      <PaymentDialog debt={debt} open={payOpen} onOpenChange={setPayOpen} />
-      <DebtDetailDialog debt={debt} open={detailOpen} onOpenChange={setDetailOpen} />
+      <PaymentDialog debt={debt} open={payOpen} onOpenChange={setPayOpen} lang={lang} />
+      <DebtDetailDialog debt={debt} open={detailOpen} onOpenChange={setDetailOpen} lang={lang} />
     </>
   );
 }
 
-function PaymentDialog({ debt, open, onOpenChange }: { debt: Debt; open: boolean; onOpenChange: (o: boolean) => void }) {
+function PaymentDialog({ debt, open, onOpenChange, lang }: { debt: Debt; open: boolean; onOpenChange: (o: boolean) => void; lang: Lang }) {
+  const { t } = useLang();
   const qc = useQueryClient();
   const [amount, setAmount] = React.useState("");
   const [method, setMethod] = React.useState<PaymentMethod>("CASH");
@@ -180,37 +192,37 @@ function PaymentDialog({ debt, open, onOpenChange }: { debt: Debt; open: boolean
       return r.json();
     },
     onSuccess: () => {
-      toast.success("Payment recorded");
+      toast.success(t("debts.settledToast"));
       qc.invalidateQueries({ queryKey: ["debts"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       onOpenChange(false);
     },
-    onError: () => toast.error("Could not record payment"),
+    onError: () => toast.error(t("saleFailed")),
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
-          <DialogDescription className="sr-only">Record a debt payment from {debt.customer.name}.</DialogDescription>
+          <DialogTitle>{t("debts.recordPayment")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("debts.recordPayment")} — {debt.customer.name}.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div className="rounded-xl bg-muted/40 p-2.5">
             <p className="text-sm font-semibold">{debt.customer.name}</p>
-            <p className="text-[11px] text-muted-foreground tnum">Outstanding: {formatBirr(debt.balance)} of {formatBirr(debt.amount)}</p>
+            <p className="text-[11px] text-muted-foreground tnum">{t("debts.outstanding")}: {formatBirr(debt.balance)} / {formatBirr(debt.amount)}</p>
           </div>
           <div>
-            <Label className="text-xs">Amount (Br)</Label>
+            <Label className="text-xs">{t("debts.paymentAmount")} (Br)</Label>
             <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className="mt-1 tnum text-lg" autoFocus />
           </div>
           <div>
-            <Label className="text-xs">Payment method</Label>
+            <Label className="text-xs">{t("sell.paymentMethod")}</Label>
             <div className="mt-1 grid grid-cols-3 gap-1.5">
               {(["CASH", "MOBILE", "BANK"] as PaymentMethod[]).map((m) => (
                 <button key={m} type="button" onClick={() => { setMethod(m); setDetail(""); }}
                   className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", method === m ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-                  {m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : "Bank"}
+                  {m === "CASH" ? t("sell.cash") : m === "MOBILE" ? t("sell.mobile") : t("sell.bank")}
                 </button>
               ))}
             </div>
@@ -219,14 +231,14 @@ function PaymentDialog({ debt, open, onOpenChange }: { debt: Debt; open: boolean
             <div><AccountProviderSelect method={method} value={detail} onChange={setDetail} /></div>
           )}
           <div>
-            <Label className="text-xs">Note (optional)</Label>
+            <Label className="text-xs">{t("debts.note")}</Label>
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="mt-1" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending || !amount} className="bg-emerald-600 text-white">
-            {save.isPending ? "Saving…" : "Record Payment"}
+            {save.isPending ? t("common.loading") : t("debts.recordPayment")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -234,13 +246,14 @@ function PaymentDialog({ debt, open, onOpenChange }: { debt: Debt; open: boolean
   );
 }
 
-function DebtDetailDialog({ debt, open, onOpenChange }: { debt: Debt; open: boolean; onOpenChange: (o: boolean) => void }) {
+function DebtDetailDialog({ debt, open, onOpenChange, lang }: { debt: Debt; open: boolean; onOpenChange: (o: boolean) => void; lang: Lang }) {
+  const { t } = useLang();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Debt Details</DialogTitle>
-          <DialogDescription className="sr-only">Debt details and payment history for {debt.customer.name}.</DialogDescription>
+          <DialogTitle>{t("debts.title")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("debts.title")} — {debt.customer.name}.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div className="rounded-xl bg-muted/40 p-3">
@@ -251,27 +264,24 @@ function DebtDetailDialog({ debt, open, onOpenChange }: { debt: Debt; open: bool
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded-lg bg-muted/30 p-2">
-              <p className="text-[10px] text-muted-foreground">Original</p>
+              <p className="text-[10px] text-muted-foreground">{t("debts.original")}</p>
               <p className="text-sm font-bold tnum"><Money amount={debt.amount} /></p>
             </div>
             <div className="rounded-lg bg-emerald-500/10 p-2">
-              <p className="text-[10px] text-muted-foreground">Paid</p>
+              <p className="text-[10px] text-muted-foreground">{t("debts.paid")}</p>
               <p className="text-sm font-bold tnum text-emerald-400"><Money amount={debt.paid} /></p>
             </div>
             <div className="rounded-lg bg-amber-500/10 p-2">
-              <p className="text-[10px] text-muted-foreground">Balance</p>
+              <p className="text-[10px] text-muted-foreground">{t("debts.balance")}</p>
               <p className="text-sm font-bold tnum text-amber-400"><Money amount={debt.balance} /></p>
             </div>
           </div>
           {debt.payments.length > 0 && (
             <div>
-              <p className="mb-1.5 text-xs font-semibold">Payment History</p>
+              <p className="mb-1.5 text-xs font-semibold">{t("debts.recordPayment")}</p>
               <div className="space-y-1">
                 {debt.payments.map((p) => {
-                  const methodLabel = p.paymentMethod === "CASH" ? "Cash"
-                    : p.paymentMethod === "MOBILE" ? `Mobile${p.paymentDetail ? ` · ${p.paymentDetail}` : ""}`
-                    : p.paymentMethod === "BANK" ? `Bank${p.paymentDetail ? ` · ${p.paymentDetail}` : ""}`
-                    : p.paymentMethod;
+                  const methodLabel = paymentLabelT(p.paymentMethod, p.paymentDetail, lang);
                   return (
                     <div key={p.id} className="flex items-center justify-between rounded-lg bg-muted/20 px-2.5 py-2 text-xs">
                       <div className="min-w-0">
@@ -292,7 +302,7 @@ function DebtDetailDialog({ debt, open, onOpenChange }: { debt: Debt; open: bool
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.close")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -300,6 +310,7 @@ function DebtDetailDialog({ debt, open, onOpenChange }: { debt: Debt; open: bool
 }
 
 function AddDebtDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const { t } = useLang();
   const qc = useQueryClient();
   const [customers, setCustomers] = React.useState<{ id: string; name: string }[]>([]);
   const [customerId, setCustomerId] = React.useState("");
@@ -329,46 +340,46 @@ function AddDebtDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
       return r.json();
     },
     onSuccess: () => {
-      toast.success("Debt recorded");
+      toast.success(t("debts.added"));
       qc.invalidateQueries({ queryKey: ["debts"] });
       setCustomerId(""); setNewCustomer(""); setAmount(""); setNote("");
       onOpenChange(false);
     },
-    onError: () => toast.error("Could not record debt"),
+    onError: () => toast.error(t("saleFailed")),
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Debt</DialogTitle>
-          <DialogDescription className="sr-only">Record a new customer debt.</DialogDescription>
+          <DialogTitle>{t("debts.add")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("debts.subtitle")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
-            <Label className="text-xs">Customer</Label>
+            <Label className="text-xs">{t("debts.customerName")}</Label>
             {customers.length > 0 && (
               <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}
                 className="mt-1 h-9 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-sm focus:border-primary/50 focus:outline-none">
-                <option value="">— Select existing —</option>
+                <option value="">— {t("common.all")} —</option>
                 {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             )}
-            <Input value={newCustomer} onChange={(e) => setNewCustomer(e.target.value)} placeholder="…or type a new customer name" className="mt-1" />
+            <Input value={newCustomer} onChange={(e) => setNewCustomer(e.target.value)} placeholder="…" className="mt-1" />
           </div>
           <div>
-            <Label className="text-xs">Amount (Br)</Label>
+            <Label className="text-xs">{t("debts.amount")} (Br)</Label>
             <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" className="mt-1 tnum text-lg" />
           </div>
           <div>
-            <Label className="text-xs">Note (optional)</Label>
+            <Label className="text-xs">{t("debts.note")}</Label>
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="mt-1" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending || (!customerId && !newCustomer.trim()) || !amount} className="bg-primary text-primary-foreground">
-            {save.isPending ? "Saving…" : "Save"}
+            {save.isPending ? t("common.loading") : t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

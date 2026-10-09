@@ -14,6 +14,7 @@ import {
   PeriodTabs, SearchInput, EmptyState, Pill,
   PageScaffold, ListSkeleton,
 } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface AuditEvent {
@@ -173,6 +174,7 @@ function dayHeader(d: string): string {
 // ─── View ───────────────────────────────────────────────────────────────
 export function AuditLogView() {
   const { back } = useNav();
+  const { t } = useLang();
   const [period, setPeriod] = React.useState<PeriodKey>("TODAY");
   const [q, setQ] = React.useState("");
   const [customFrom, setCustomFrom] = React.useState<string>(() => {
@@ -231,8 +233,8 @@ export function AuditLogView() {
 
   return (
     <PageScaffold
-      title="Audit Log"
-      subtitle="Every important action, recorded."
+      title={t("audit.title")}
+      subtitle={t("audit.subtitle")}
       onBack={() => back()}
     >
       <div className="mb-4">
@@ -275,7 +277,7 @@ export function AuditLogView() {
 
       <p className="mb-3 px-1 text-xs text-muted-foreground">
         Showing <span className="tnum font-semibold text-foreground">{events.length}</span>{" "}
-        {events.length === 1 ? "event" : "events"}
+        {events.length === 1 ? t("audit.event") : t("audit.events")}
       </p>
 
       {isLoading ? (
@@ -298,7 +300,7 @@ export function AuditLogView() {
                 <span className="rounded-full bg-muted/70 px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
                   {dayHeader(items[0].createdAt)}
                 </span>
-                <span className="text-[11px] text-muted-foreground tnum">{items.length} {items.length === 1 ? "event" : "events"}</span>
+                <span className="text-[11px] text-muted-foreground tnum">{items.length} {items.length === 1 ? t("audit.event") : t("audit.events")}</span>
               </div>
               <div className="relative space-y-2 pl-5">
                 {/* Vertical timeline line */}
@@ -317,6 +319,7 @@ export function AuditLogView() {
 
 // ─── Row ────────────────────────────────────────────────────────────────
 function AuditRow({ event }: { event: AuditEvent }) {
+  const { t } = useLang();
   const { tone, icon, label } = classifyAction(event.action);
   return (
     <Card className="relative overflow-hidden p-3 card-raised">
@@ -339,8 +342,8 @@ function AuditRow({ event }: { event: AuditEvent }) {
             <p className="mt-0.5 text-[12px] text-muted-foreground">{event.description}</p>
           )}
           <p className="mt-1 text-[11px] text-muted-foreground">
-            by <span className="font-medium text-foreground/80">{event.userName || "System"}</span>
-            {" · "}{relativeDay(event.createdAt)} at {formatTime(event.createdAt)}
+            {t("common.by")} <span className="font-medium text-foreground/80">{event.userName || "System"}</span>
+            {" · "}{relativeDay(event.createdAt)} {t("common.at")} {formatTime(event.createdAt)}
           </p>
         </div>
       </div>

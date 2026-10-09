@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   PageScaffold, StatTile, ListSkeleton, SectionHeader, Pill,
 } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface DeviceResp {
@@ -27,6 +28,7 @@ interface DeviceResp {
 // ─── View ───────────────────────────────────────────────────────────────
 export function DeviceView() {
   const { back, go } = useNav();
+  const { t } = useLang();
 
   const { data, isLoading } = useQuery<DeviceResp>({
     queryKey: ["device"],
@@ -39,7 +41,7 @@ export function DeviceView() {
 
   if (isLoading) {
     return (
-      <PageScaffold title="Device & Storage" subtitle="Health, storage and database status" onBack={() => back()}>
+      <PageScaffold title={t("device.title")} subtitle="Health, storage and database status" onBack={() => back()}>
         <ListSkeleton rows={5} />
       </PageScaffold>
     );
@@ -59,7 +61,7 @@ export function DeviceView() {
 
   return (
     <PageScaffold
-      title="Device & Storage"
+      title={t("device.title")}
       subtitle="Health, storage and database status"
       onBack={() => back()}
     >
@@ -210,7 +212,7 @@ export function DeviceView() {
                   <svg viewBox="0 0 24 24" className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6" /><path d="m7 9 5-5 5 5" /><path d="M12 4v12" />
                   </svg>
-                  Backup
+                  {t("common.backup")}
                 </Button>
               </div>
             </div>

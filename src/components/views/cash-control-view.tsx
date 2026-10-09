@@ -19,6 +19,7 @@ import {
   EmptyState, Pill, PageScaffold, ListSkeleton, Money,
 } from "@/components/app/primitives";
 import { AccountProviderSelect } from "@/components/app/account-provider-select";
+import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface CashSession {
@@ -48,6 +49,7 @@ async function fetchSessions(): Promise<SessionsResp> {
 // ─── View ───────────────────────────────────────────────────────────────
 export function CashControlView() {
   const { back } = useNav();
+  const { t } = useLang();
   const qc = useQueryClient();
   const [openDrawer, setOpenDrawer] = React.useState(false);
   const [closeDrawer, setCloseDrawer] = React.useState(false);
@@ -82,8 +84,8 @@ export function CashControlView() {
 
   return (
     <PageScaffold
-      title="Cash Control"
-      subtitle="Open and close the daily cash drawer"
+      title={t("cashControl.title")}
+      subtitle={t("cashControl.subtitle")}
       onBack={() => back()}
     >
       {isLoading ? (
@@ -98,17 +100,17 @@ export function CashControlView() {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                 </span>
-                <span className="text-sm font-semibold text-emerald-400">Current session</span>
+                <span className="text-sm font-semibold text-emerald-400">{t("cashControl.opened")}</span>
               </div>
-              <Pill tone="good">Open</Pill>
+              <Pill tone="good">{t("common.open")}</Pill>
             </div>
             <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3">
-              <MetaCell label="Opened at" value={formatDateTime(open.openedAt)} />
-              <MetaCell label="Opening" value={formatBirr(open.opening)} tnum />
-              <MetaCell label="Opened by" value={open.openedBy || "—"} />
-              <MetaCell label="Date" value={formatDate(open.openedAt)} />
-              <MetaCell label="Expected cash" value={formatBirr(open.expected ?? 0)} tnum accent="emerald" />
-              <MetaCell label="Status" value="Live · recomputed" accent="emerald" />
+              <MetaCell label={t("common.date")} value={formatDateTime(open.openedAt)} />
+              <MetaCell label={t("cashControl.opening")} value={formatBirr(open.opening)} tnum />
+              <MetaCell label={t("cashControl.openedBy")} value={open.openedBy || "—"} />
+              <MetaCell label={t("common.date")} value={formatDate(open.openedAt)} />
+              <MetaCell label={t("cashControl.expected")} value={formatBirr(open.expected ?? 0)} tnum accent="emerald" />
+              <MetaCell label={t("common.status")} value={t("cashControl.opened")} accent="emerald" />
             </div>
           </Card>
 
@@ -121,16 +123,16 @@ export function CashControlView() {
                   <path d="M3 10h18" />
                   <path d="M14 15h3" />
                 </svg>
-                <h2 className="text-base font-semibold">Close Cash Drawer</h2>
+                <h2 className="text-base font-semibold">{t("cashControl.closeDrawer")}</h2>
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                Count the cash in the drawer and enter the total below. The system will compute the expected amount from sales, expenses, refunds, and manual movements during this session.
+                {t("cashControl.subtitle")}
               </p>
 
               <div className="mt-3 grid grid-cols-3 gap-2.5">
-                <CloseStat label="Expected" value={open.expected ?? 0} tone="default" />
-                <CloseStat label="Counted" value={null} tone="input" placeholder="0.00" />
-                <CloseStat label="Difference" value={null} tone="diff" placeholder="—" />
+                <CloseStat label={t("cashControl.expected")} value={open.expected ?? 0} tone="default" />
+                <CloseStat label={t("cashControl.counted")} value={null} tone="input" placeholder="0.00" />
+                <CloseStat label={t("cashControl.difference")} value={null} tone="diff" placeholder="—" />
               </div>
 
               <Button
@@ -140,7 +142,7 @@ export function CashControlView() {
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" />
                 </svg>
-                Close Cash Drawer
+                {t("cashControl.closeDrawer")}
               </Button>
             </div>
           </Card>
@@ -155,10 +157,10 @@ export function CashControlView() {
                   <path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" />
                   <path d="M9 9l-2 3 2 3M15 9l2 3-2 3" />
                 </svg>
-                <h2 className="text-base font-semibold">Open Cash Drawer</h2>
+                <h2 className="text-base font-semibold">{t("cashControl.openDrawer")}</h2>
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                Open the drawer by entering the starting cash amount. The system will track every cash sale, expense, purchase, and manual movement until you close the drawer.
+                {t("cashControl.subtitle")}
               </p>
               <Button
                 onClick={() => setOpenDrawer(true)}
@@ -167,7 +169,7 @@ export function CashControlView() {
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
-                Open Cash Drawer
+                {t("cashControl.openDrawer")}
               </Button>
             </div>
           </Card>
@@ -181,7 +183,7 @@ export function CashControlView() {
             <svg viewBox="0 0 24 24" className="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 6 9 17l-5-5" />
             </svg>
-            <span className="text-sm font-semibold text-emerald-400">Drawer closed</span>
+            <span className="text-sm font-semibold text-emerald-400">{t("cashControl.closed")}</span>
             <button
               onClick={() => setJustClosed(null)}
               className="ml-auto rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -193,23 +195,23 @@ export function CashControlView() {
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
-            <MetaCell label="Expected" value={formatBirr(justClosed.expected ?? 0)} tnum />
-            <MetaCell label="Counted" value={formatBirr(justClosed.counted ?? 0)} tnum />
+            <MetaCell label={t("cashControl.expected")} value={formatBirr(justClosed.expected ?? 0)} tnum />
+            <MetaCell label={t("cashControl.counted")} value={formatBirr(justClosed.counted ?? 0)} tnum />
             <MetaCell
-              label="Difference"
+              label={t("cashControl.difference")}
               value={formatBirr(Math.abs(justClosed.difference ?? 0))}
               tone={diffTone(justClosed.difference ?? 0)}
               accent={diffAccent(justClosed.difference ?? 0)}
             />
-            <MetaCell label="Closed by" value={justClosed.closedBy || "—"} />
+            <MetaCell label={t("cashControl.closedBy")} value={justClosed.closedBy || "—"} />
           </div>
         </Card>
       )}
 
       {/* Past sessions */}
       <div className="mb-2 px-1">
-        <h2 className="text-base font-semibold">Past Sessions</h2>
-        <p className="text-xs text-muted-foreground">Closed cash drawer sessions</p>
+        <h2 className="text-base font-semibold">{t("cashControl.pastSessions")}</h2>
+        <p className="text-xs text-muted-foreground">{t("cashControl.subtitle")}</p>
       </div>
 
       {isLoading ? (
@@ -223,8 +225,8 @@ export function CashControlView() {
               <path d="M7 15h4" />
             </svg>
           }
-          title="No closed sessions yet."
-          description="Your closed cash drawer sessions will appear here."
+          title={t("cashControl.noSessions")}
+          description={t("cashControl.subtitle")}
         />
       ) : (
         <div className="space-y-2.5">
@@ -251,6 +253,7 @@ export function CashControlView() {
 
 // ─── Row ────────────────────────────────────────────────────────────────
 function SessionRow({ session: s }: { session: CashSession }) {
+  const { t } = useLang();
   const diff = s.difference ?? 0;
   return (
     <Card className="p-3.5 card-raised">
@@ -270,27 +273,22 @@ function SessionRow({ session: s }: { session: CashSession }) {
               {s.closedAt ? `${formatTime(s.closedAt)}` : "—"}
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Closed by {s.closedBy || "—"}
+              {t("cashControl.closedBy")} {s.closedBy || "—"}
             </p>
             {s.note && (
               <p className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-400 ring-1 ring-violet-500/20">
                 {s.note.includes("Transferred") ? "🏦" : "📝"} {s.note}
               </p>
             )}
-            {!s.note && (
-              <p className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                No transfer
-              </p>
-            )}
           </div>
         </div>
         <div className="shrink-0 text-right">
           <div className="flex items-center gap-1.5 justify-end">
-            <Pill tone="muted">Open {formatBirr(s.opening)}</Pill>
+            <Pill tone="muted">{t("cashControl.opening")} {formatBirr(s.opening)}</Pill>
             <Pill tone={diffTone(diff)}>{diffLabel(diff)}</Pill>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground tnum">
-            expected <Money amount={s.expected ?? 0} /> · counted <Money amount={s.counted ?? 0} />
+            {t("cashControl.expected").toLowerCase()} <Money amount={s.expected ?? 0} /> · {t("cashControl.counted").toLowerCase()} <Money amount={s.counted ?? 0} />
           </p>
         </div>
       </div>
@@ -306,6 +304,7 @@ function OpenDrawerDialog({
   onOpenChange: (o: boolean) => void;
   onSuccess: () => void;
 }) {
+  const { t } = useLang();
   const [opening, setOpening] = React.useState("");
   const [userName, setUserName] = React.useState("");
 
@@ -329,23 +328,23 @@ function OpenDrawerDialog({
       return r.json();
     },
     onSuccess: () => {
-      toast.success("Cash drawer opened");
+      toast.success(t("cashControl.openedToast"));
       setOpening("");
       setUserName("");
       onSuccess();
     },
-    onError: (e: Error) => toast.error(e.message || "Could not open drawer"),
+    onError: (e: Error) => toast.error(e.message || t("saleFailed")),
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Open Cash Drawer</DialogTitle>
+          <DialogTitle>{t("cashControl.openDrawer")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
-            <Label className="text-xs">Opening amount (Br)</Label>
+            <Label className="text-xs">{t("cashControl.openAmount")} (Br)</Label>
             <Input
               value={opening}
               onChange={(e) => setOpening(e.target.value)}
@@ -355,27 +354,27 @@ function OpenDrawerDialog({
               autoFocus
             />
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Count the cash currently in the drawer and enter the total.
+              {t("cashControl.subtitle")}
             </p>
           </div>
           <div>
-            <Label className="text-xs">Opened by (optional)</Label>
+            <Label className="text-xs">{t("cashControl.openedBy")}</Label>
             <Input
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
-              placeholder="Cashier name"
+              placeholder="…"
               className="mt-1"
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           <Button
             onClick={() => mut.mutate()}
             disabled={mut.isPending || !canOpen}
             className="bg-primary text-primary-foreground"
           >
-            {mut.isPending ? "Opening…" : "Open Drawer"}
+            {mut.isPending ? t("common.loading") : t("cashControl.openDrawer")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -392,6 +391,7 @@ function CloseDrawerDialog({
   expected: number;
   onSuccess: (session: CashSession) => void;
 }) {
+  const { t } = useLang();
   const qc = useQueryClient();
   const [counted, setCounted] = React.useState("");
   const [note, setNote] = React.useState("");
@@ -452,9 +452,9 @@ function CloseDrawerDialog({
       return r.json();
     },
     onSuccess: (data) => {
-      toast.success(diff === 0 ? "Drawer closed — balanced" : diff > 0 ? `Drawer closed — over by ${formatBirr(diff)}` : `Drawer closed — short by ${formatBirr(Math.abs(diff))}`);
+      toast.success(t("cashControl.closedToast"));
       if (transferEnabled && transferN > 0) {
-        toast.success(`${formatBirr(transferN)} transferred to ${transferTo}`);
+        toast.success(`${formatBirr(transferN)} → ${transferTo}`);
       }
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["money"] });
@@ -464,25 +464,25 @@ function CloseDrawerDialog({
       setTransferEnabled(false); setTransferAmount(""); setTransferDetail("");
       onSuccess(session);
     },
-    onError: (e: Error) => toast.error(e.message || "Could not close drawer"),
+    onError: (e: Error) => toast.error(e.message || t("saleFailed")),
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Close Cash Drawer</DialogTitle>
-          <DialogDescription className="sr-only">Count cash, optionally transfer to bank or mobile, then close the drawer.</DialogDescription>
+          <DialogTitle>{t("cashControl.closeDrawer")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("cashControl.subtitle")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           {/* Expected */}
           <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2.5">
-            <span className="text-xs font-medium text-muted-foreground">Expected cash</span>
+            <span className="text-xs font-medium text-muted-foreground">{t("cashControl.expected")}</span>
             <span className="text-base font-bold tnum">{formatBirr(expected)}</span>
           </div>
 
           <div>
-            <Label className="text-xs">Counted total (Br)</Label>
+            <Label className="text-xs">{t("cashControl.countedAmount")} (Br)</Label>
             <Input
               value={counted}
               onChange={(e) => setCounted(e.target.value)}
@@ -503,12 +503,12 @@ function CloseDrawerDialog({
                 ? "bg-emerald-500/10 ring-emerald-500/25"
                 : "bg-red-500/10 ring-red-500/25",
             )}>
-              <span className="text-xs font-medium text-muted-foreground">Difference</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("cashControl.difference")}</span>
               <Pill tone={diffTone(diff)}>{diffLabel(diff)}</Pill>
             </div>
           ) : (
             <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2.5">
-              <span className="text-xs font-medium text-muted-foreground">Difference</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("cashControl.difference")}</span>
               <span className="text-sm font-semibold text-muted-foreground tnum">—</span>
             </div>
           )}
@@ -517,30 +517,26 @@ function CloseDrawerDialog({
           <div className="rounded-lg border border-border/60 p-2.5">
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={transferEnabled} onChange={(e) => setTransferEnabled(e.target.checked)} className="h-4 w-4 rounded accent-primary" />
-              <span className="text-xs font-semibold">Transfer cash to Bank or Mobile</span>
+              <span className="text-xs font-semibold">{t("money.bank")} / {t("money.mobile")}</span>
             </label>
             {transferEnabled && (
               <div className="mt-2.5 space-y-2">
                 <div className="grid grid-cols-2 gap-1.5">
                   <button type="button" onClick={() => { setTransferTo("BANK"); setTransferDetail(""); }}
                     className={cn("rounded-lg py-2 text-xs font-semibold", transferTo === "BANK" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-                    🏦 Bank
+                    🏦 {t("money.bank")}
                   </button>
                   <button type="button" onClick={() => { setTransferTo("MOBILE"); setTransferDetail(""); }}
                     className={cn("rounded-lg py-2 text-xs font-semibold", transferTo === "MOBILE" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-                    📱 Mobile
+                    📱 {t("money.mobile")}
                   </button>
                 </div>
                 <div>
-                  <Label className="text-[10px]">Amount to transfer (Br)</Label>
-                  <Input value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} inputMode="decimal" placeholder="e.g. 20000" className="mt-0.5 h-9 tnum text-sm" />
-                  <div className="mt-1 flex gap-1.5">
-                    <button type="button" onClick={() => setTransferAmount(String(countedN || expected))} className="rounded-md bg-muted/60 px-2 py-1 text-[10px] font-semibold">Full amount</button>
-                    <button type="button" onClick={() => setTransferAmount(String(Math.round((countedN || expected) / 2)))} className="rounded-md bg-muted/60 px-2 py-1 text-[10px] font-semibold">Half</button>
-                  </div>
+                  <Label className="text-[10px]">{t("money.amount")} (Br)</Label>
+                  <Input value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} inputMode="decimal" placeholder="0.00" className="mt-0.5 h-9 tnum text-sm" />
                 </div>
                 <div>
-                  <Label className="text-[10px]">{transferTo === "MOBILE" ? "Provider" : "Bank"}</Label>
+                  <Label className="text-[10px]">{transferTo === "MOBILE" ? t("sell.provider") : t("sell.bankLabel")}</Label>
                   <div className="mt-0.5">
                     <AccountProviderSelect method={transferTo} value={transferDetail} onChange={setTransferDetail} />
                   </div>
@@ -550,24 +546,24 @@ function CloseDrawerDialog({
           </div>
 
           <div>
-            <Label className="text-xs">Closed by (optional)</Label>
-            <Input value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Cashier name" className="mt-1" />
+            <Label className="text-xs">{t("cashControl.closedBy")}</Label>
+            <Input value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="…" className="mt-1" />
           </div>
 
           <div>
-            <Label className="text-xs">Note (optional)</Label>
-            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="e.g. shift handover notes" className="mt-1" />
+            <Label className="text-xs">{t("cashControl.note")}</Label>
+            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="…" className="mt-1" />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           <Button
             onClick={() => mut.mutate()}
             disabled={mut.isPending || !counted}
             className="bg-primary text-primary-foreground"
           >
-            {mut.isPending ? "Closing…" : "Close Cash Drawer"}
+            {mut.isPending ? t("common.loading") : t("cashControl.closeDrawer")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -587,9 +583,9 @@ function diffAccent(diff: number): "emerald" | "red" | undefined {
 }
 
 function diffLabel(diff: number): string {
-  if (diff === 0) return "Balanced";
-  if (diff > 0) return `Over by ${formatBirr(diff)}`;
-  return `Short by ${formatBirr(Math.abs(diff))}`;
+  if (diff === 0) return "";
+  if (diff > 0) return `+${formatBirr(diff)}`;
+  return `−${formatBirr(Math.abs(diff))}`;
 }
 
 // ─── Small display pieces ───────────────────────────────────────────────

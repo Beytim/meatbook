@@ -19,6 +19,7 @@ import {
   PeriodTabs, SearchInput, EmptyState, StatTile, Pill,
   PageScaffold, ListSkeleton, Money, Kg,
 } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface SaleItem { name: string; unitPrice: number; kg: number; total: number; }
@@ -47,17 +48,25 @@ interface SalesResp {
 const STATUS_TONE: Record<SaleStatus, "good" | "bad" | "warn"> = {
   COMPLETED: "good", VOIDED: "bad", REFUNDED: "warn",
 };
-const STATUS_LABEL: Record<SaleStatus, string> = {
-  COMPLETED: "Completed", VOIDED: "Voided", REFUNDED: "Refunded",
-};
+function useStatusLabel(): Record<SaleStatus, string> {
+  const { t } = useLang();
+  return {
+    COMPLETED: t("salesHistory.completed"),
+    VOIDED: t("salesHistory.voided"),
+    REFUNDED: t("salesHistory.refunded"),
+  };
+}
 
-function paymentLabel(method: string, detail?: string | null): string {
-  const m = (method || "").toUpperCase();
-  if (m === "CASH") return "Cash";
-  if (m === "MOBILE") return `Mobile${detail ? ` · ${detail}` : ""}`;
-  if (m === "BANK") return `Bank${detail ? ` · ${detail}` : ""}`;
-  if (m === "CREDIT") return "Credit";
-  return method || "—";
+function usePaymentLabel(): (method: string, detail?: string | null) => string {
+  const { t } = useLang();
+  return (method: string, detail?: string | null): string => {
+    const m = (method || "").toUpperCase();
+    if (m === "CASH") return t("sell.cash");
+    if (m === "MOBILE") return `${t("sell.mobile")}${detail ? ` · ${detail}` : ""}`;
+    if (m === "BANK") return `${t("sell.bank")}${detail ? ` · ${detail}` : ""}`;
+    if (m === "CREDIT") return t("sell.credit");
+    return method || "—";
+  };
 }
 
 async function fetchSales(period: PeriodKey, q: string, status?: string): Promise<SalesResp> {
@@ -70,6 +79,9 @@ async function fetchSales(period: PeriodKey, q: string, status?: string): Promis
 
 export function SalesHistoryView() {
   const { back, go } = useNav();
+  const { t } = useLang();
+  const statusLabel = useStatusLabel();
+  const paymentLabel = usePaymentLabel();
   const [period, setPeriod] = React.useState<PeriodKey>("TODAY");
   const [q, setQ] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"ALL" | SaleStatus>("ALL");
@@ -81,7 +93,7 @@ export function SalesHistoryView() {
   const [openId, setOpenId] = React.useState<string | null>(null);
 
   const [debouncedQ, setDebouncedQ] = React.useState(q);
-  React.useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 250); return () => clearTimeout(t); }, [q]);
+  React.useEffect(() => { const tm = setTimeout(() => setDebouncedQ(q), 250); return () => clearTimeout(tm); }, [q]);
 
   const isCustom = period === "CUSTOM";
   const queryKey = isCustom
@@ -113,7 +125,7 @@ export function SalesHistoryView() {
   const sales = data?.sales ?? [];
 
   return (
-    <PageScaffold title="Sales History" subtitle="All transactions, newest first" onBack={() => back()}>
+    <PageScaffold title={t("salesHistory.title")} subtitle={t("salesHistory.allTransactions")} onBack={() => back()}>
       <div className="mb-3">
         <PeriodTabs value={period} onChange={setPeriod} periods={["TODAY", "YESTERDAY", "7D", "30D", "MONTH", "YEAR", "CUSTOM"]} />
       </div>
@@ -121,11 +133,11 @@ export function SalesHistoryView() {
       {isCustom && (
         <Card className="mb-3 grid grid-cols-2 gap-3 p-3 card-raised">
           <div>
-            <Label className="text-xs text-muted-foreground">From</Label>
+            <Label className="text-xs text-muted-foreground">{t("common.from")}</Label>
             <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="mt-1 tnum" />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">To</Label>
+            <Label className="text-xs text-muted-foreground">{t("common.to")}</Label>
             <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="mt-1 tnum" />
           </div>
         </Card>
@@ -136,7 +148,7 @@ export function SalesHistoryView() {
         {(["ALL", "COMPLETED", "VOIDED", "REFUNDED"] as const).map((s) => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={cn("rounded-full px-3 py-1 text-[11px] font-semibold tap-scale", statusFilter === s ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {s === "ALL" ? "All" : STATUS_LABEL[s]}
+            {s === "ALL" ? t("common.all") : statusLabel[s]}
           </button>
         ))}
       </div>
@@ -146,18 +158,18 @@ export function SalesHistoryView() {
         {(["ALL", "CASH", "MOBILE", "BANK", "CREDIT"] as const).map((p) => (
           <button key={p} onClick={() => setPayFilter(p)}
             className={cn("rounded-full px-3 py-1 text-[11px] font-semibold tap-scale", payFilter === p ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-            {p === "ALL" ? "All" : p === "CASH" ? "Cash" : p === "MOBILE" ? "Mobile" : p === "BANK" ? "Bank" : "Credit"}
+            {p === "ALL" ? t("salesHistory.allPay") : p === "CASH" ? t("sell.cash") : p === "MOBILE" ? t("sell.mobile") : p === "BANK" ? t("sell.bank") : t("sell.credit")}
           </button>
         ))}
       </div>
 
-      <SearchInput value={q} onChange={setQ} placeholder="Search sale #, product, cashier…" className="mb-3" />
+      <SearchInput value={q} onChange={setQ} placeholder={`${t("common.search")}…`} className="mb-3" />
 
       {/* Stat tiles */}
       <div className="mb-4 grid grid-cols-3 gap-2.5">
-        <StatTile label="Revenue" value={<Money amount={stats?.revenue ?? 0} />} sub={isCustom ? "custom" : "period"} tone="primary" />
-        <StatTile label="Sales" value={<span className="tnum">{stats?.count ?? 0}</span>} sub="completed" tone="default" />
-        <StatTile label="Total Kg" value={<Kg kg={stats?.kgSold ?? 0} />} sub="sold" tone="default" />
+        <StatTile label={t("salesHistory.revenue")} value={<Money amount={stats?.revenue ?? 0} />} sub={isCustom ? t("common.custom").toLowerCase() : t("common.today").toLowerCase()} tone="primary" />
+        <StatTile label={t("salesHistory.sales")} value={<span className="tnum">{stats?.count ?? 0}</span>} sub={t("salesHistory.completed").toLowerCase()} tone="default" />
+        <StatTile label={t("salesHistory.totalKg")} value={<Kg kg={stats?.kgSold ?? 0} />} sub={t("home.soldToday2").toLowerCase()} tone="default" />
       </div>
 
       {/* List — scrollable */}
@@ -166,25 +178,26 @@ export function SalesHistoryView() {
       ) : sales.length === 0 ? (
         <EmptyState
           icon={<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1.6" /><circle cx="18" cy="21" r="1.6" /><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6" /></svg>}
-          title="No sales match."
-          description="Try a different filter or period."
-          action={<Button onClick={() => go("SELL")} className="bg-primary text-primary-foreground">Start a Sale</Button>}
+          title={t("salesHistory.empty")}
+          description={t("salesHistory.empty")}
+          action={<Button onClick={() => go("SELL")} className="bg-primary text-primary-foreground">{t("salesHistory.startSale")}</Button>}
         />
       ) : (
         <div className="mb-scroll max-h-[55vh] space-y-2 overflow-y-auto">
           {sales.map((s) => (
-            <SaleRow key={s.id} sale={s} onOpen={() => setOpenId(s.id)} />
+            <SaleRow key={s.id} sale={s} onOpen={() => setOpenId(s.id)} statusLabel={statusLabel} paymentLabel={paymentLabel} />
           ))}
         </div>
       )}
 
-      <ReceiptDialog id={openId} onClose={() => setOpenId(null)} />
+      <ReceiptDialog id={openId} onClose={() => setOpenId(null)} statusLabel={statusLabel} paymentLabel={paymentLabel} />
     </PageScaffold>
   );
 }
 
 // ─── Row ────────────────────────────────────────────────────────────────
-function SaleRow({ sale, onOpen }: { sale: Sale; onOpen: () => void }) {
+function SaleRow({ sale, onOpen, statusLabel, paymentLabel }: { sale: Sale; onOpen: () => void; statusLabel: Record<SaleStatus, string>; paymentLabel: (m: string, d?: string | null) => string }) {
+  const { t } = useLang();
   const isTakeHome = sale.type === "TAKE_HOME";
   const isCompleted = sale.status === "COMPLETED";
   const itemCount = sale.items.length;
@@ -199,7 +212,7 @@ function SaleRow({ sale, onOpen }: { sale: Sale; onOpen: () => void }) {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <p className="text-sm font-bold tnum">#{sale.number}</p>
-                <Pill tone={STATUS_TONE[sale.status]}>{STATUS_LABEL[sale.status]}</Pill>
+                <Pill tone={STATUS_TONE[sale.status]}>{statusLabel[sale.status]}</Pill>
               </div>
               <p className="truncate text-[10px] text-muted-foreground">{formatDateTime(sale.createdAt)} · {sale.cashierName || "—"}</p>
             </div>
@@ -210,7 +223,7 @@ function SaleRow({ sale, onOpen }: { sale: Sale; onOpen: () => void }) {
           </div>
         </div>
         <div className="mt-1.5 flex items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground tnum">{itemCount} item{itemCount > 1 ? "s" : ""} · <Kg kg={sale.totalKg} /></span>
+          <span className="text-[10px] text-muted-foreground tnum">{itemCount} {itemCount > 1 ? t("common.items") : t("common.item")} · <Kg kg={sale.totalKg} /></span>
         </div>
       </button>
     </Card>
@@ -218,8 +231,9 @@ function SaleRow({ sale, onOpen }: { sale: Sale; onOpen: () => void }) {
 }
 
 // ─── Receipt dialog with void/refund ────────────────────────────────────
-function ReceiptDialog({ id, onClose }: { id: string | null; onClose: () => void }) {
+function ReceiptDialog({ id, onClose, statusLabel, paymentLabel }: { id: string | null; onClose: () => void; statusLabel: Record<SaleStatus, string>; paymentLabel: (m: string, d?: string | null) => string }) {
   const { go } = useNav();
+  const { t } = useLang();
   const { data, isLoading } = useQuery<{ sale: Sale }>({
     queryKey: ["sale", id],
     queryFn: async () => { const r = await fetch(`/api/meat/sales/${id}`); if (!r.ok) throw new Error("failed"); return r.json(); },
@@ -241,11 +255,11 @@ function ReceiptDialog({ id, onClose }: { id: string | null; onClose: () => void
       return r.json();
     },
     onSuccess: () => {
-      toast.success(confirmAction === "VOID" ? "Sale voided" : "Sale refunded");
+      toast.success(confirmAction === "VOID" ? t("refundVoid.voided") : t("refundVoid.refunded"));
       setConfirmAction(null); setActionNote("");
       onClose();
     },
-    onError: () => toast.error("Could not process"),
+    onError: () => toast.error(t("saleFailed")),
   });
 
   return (
@@ -253,29 +267,29 @@ function ReceiptDialog({ id, onClose }: { id: string | null; onClose: () => void
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
-            <span>Receipt</span>
+            <span>{t("receipts.receipt")}</span>
             {sale && <span className="tnum">#{sale.number}</span>}
-            {sale && <Pill tone={STATUS_TONE[sale.status]}>{STATUS_LABEL[sale.status]}</Pill>}
+            {sale && <Pill tone={STATUS_TONE[sale.status]}>{statusLabel[sale.status]}</Pill>}
           </DialogTitle>
-          <DialogDescription className="sr-only">Receipt details and actions for sale #{sale?.number}.</DialogDescription>
+          <DialogDescription className="sr-only">{t("receipts.receipt")} #{sale?.number}.</DialogDescription>
         </DialogHeader>
         {isLoading || !sale ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">Loading receipt…</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
         ) : (
           <>
             <div className="space-y-3">
               {/* Meta */}
               <div className="grid grid-cols-2 gap-2">
-                <MetaCell label="Date" value={formatDateTime(sale.createdAt)} />
-                <MetaCell label="Cashier" value={sale.cashierName || "—"} />
-                <MetaCell label="Type" value={sale.type === "TAKE_HOME" ? "Take Home · OUT" : "Eat Here · IN"} tone={sale.type === "TAKE_HOME" ? "amber" : "emerald"} />
-                <MetaCell label="Payment" value={paymentLabel(sale.paymentMethod, sale.paymentDetail)} />
+                <MetaCell label={t("common.date")} value={formatDateTime(sale.createdAt)} />
+                <MetaCell label={t("common.cashier")} value={sale.cashierName || "—"} />
+                <MetaCell label={t("common.type")} value={sale.type === "TAKE_HOME" ? `${t("sell.takeHome")} · OUT` : `${t("sell.eatHere")} · IN`} tone={sale.type === "TAKE_HOME" ? "amber" : "emerald"} />
+                <MetaCell label={t("common.payment")} value={paymentLabel(sale.paymentMethod, sale.paymentDetail)} />
               </div>
 
               {/* Items */}
               <div className="overflow-hidden rounded-xl border border-border/60 bg-card/40">
                 <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <span>Item</span><span>Total</span>
+                  <span>{t("common.item")}</span><span>{t("common.total")}</span>
                 </div>
                 {sale.items.map((it, i) => (
                   <div key={i} className="border-b border-border/40 px-3 py-2 last:border-0">
@@ -292,7 +306,7 @@ function ReceiptDialog({ id, onClose }: { id: string | null; onClose: () => void
 
               {/* Grand total */}
               <div className="flex items-center justify-between rounded-xl bg-primary/10 px-3 py-2.5 ring-1 ring-primary/20">
-                <span className="text-sm font-semibold">Grand total</span>
+                <span className="text-sm font-semibold">{t("sell.grandTotal")}</span>
                 <span className="text-lg font-bold tnum"><Money amount={sale.total} /></span>
               </div>
             </div>
@@ -300,9 +314,9 @@ function ReceiptDialog({ id, onClose }: { id: string | null; onClose: () => void
             {/* Void/Refund actions — only for completed sales */}
             {sale.status === "COMPLETED" && !confirmAction && (
               <div className="flex gap-2 pt-1">
-                <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => go("RECEIPTS")}>Reprint</Button>
-                <Button variant="outline" size="sm" className="flex-1 text-xs text-red-400 hover:text-red-300" onClick={() => setConfirmAction("VOID")}>Void</Button>
-                <Button variant="outline" size="sm" className="flex-1 text-xs text-amber-400 hover:text-amber-300" onClick={() => setConfirmAction("REFUND")}>Refund</Button>
+                <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => go("RECEIPTS")}>{t("receipts.reprint")}</Button>
+                <Button variant="outline" size="sm" className="flex-1 text-xs text-red-400 hover:text-red-300" onClick={() => setConfirmAction("VOID")}>{t("refundVoid.void")}</Button>
+                <Button variant="outline" size="sm" className="flex-1 text-xs text-amber-400 hover:text-amber-300" onClick={() => setConfirmAction("REFUND")}>{t("refundVoid.refund")}</Button>
               </div>
             )}
 
@@ -310,16 +324,16 @@ function ReceiptDialog({ id, onClose }: { id: string | null; onClose: () => void
             {confirmAction && (
               <div className="rounded-xl border border-border/60 p-3 space-y-2">
                 <p className="text-sm font-semibold text-red-400">
-                  {confirmAction === "VOID" ? "Void this sale?" : "Refund this sale?"}
+                  {confirmAction === "VOID" ? t("refundVoid.voidConfirm") : t("refundVoid.refundConfirm")}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Sale #{sale.number} · {formatBirr(sale.total)}. This cannot be undone.
+                  #{sale.number} · {formatBirr(sale.total)}. {t("refundVoid.irreversible")}.
                 </p>
-                <Input value={actionNote} onChange={(e) => setActionNote(e.target.value)} placeholder="Reason (optional)" className="h-9 text-xs" />
+                <Input value={actionNote} onChange={(e) => setActionNote(e.target.value)} placeholder={t("refundVoid.reason")} className="h-9 text-xs" />
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="text-xs" onClick={() => { setConfirmAction(null); setActionNote(""); }}>Cancel</Button>
+                  <Button variant="outline" size="sm" className="text-xs" onClick={() => { setConfirmAction(null); setActionNote(""); }}>{t("common.cancel")}</Button>
                   <Button variant="destructive" size="sm" className="flex-1 text-xs" onClick={() => act.mutate()} disabled={act.isPending}>
-                    {act.isPending ? "Processing…" : `Confirm ${confirmAction === "VOID" ? "Void" : "Refund"}`}
+                    {act.isPending ? t("common.loading") : `${t("common.confirm")} ${confirmAction === "VOID" ? t("refundVoid.void") : t("refundVoid.refund")}`}
                   </Button>
                 </div>
               </div>

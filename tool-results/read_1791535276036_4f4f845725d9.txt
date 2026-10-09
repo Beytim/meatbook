@@ -1,0 +1,649 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+     5→import { useNav } from "@/lib/nav";
+     6→import {
+     7→  cn, formatBirr, formatDateTime, formatDate, formatTime,
+     8→} from "@/lib/utils";
+     9→import { Card } from "@/components/ui/card";
+    10→import { toast } from "sonner";
+    11→import { Button } from "@/components/ui/button";
+    12→import { Input } from "@/components/ui/input";
+    13→import { Label } from "@/components/ui/label";
+    14→import { Textarea } from "@/components/ui/textarea";
+    15→import {
+    16→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+    17→} from "@/components/ui/dialog";
+    18→import {
+    19→  EmptyState, Pill, PageScaffold, ListSkeleton, Money,
+    20→} from "@/components/app/primitives";
+    21→import { AccountProviderSelect } from "@/components/app/account-provider-select";
+    22→
+    23→// ─── Types ──────────────────────────────────────────────────────────────
+    24→interface CashSession {
+    25→  id: string;
+    26→  opening: number;
+    27→  expected: number | null;
+    28→  counted: number | null;
+    29→  difference: number | null;
+    30→  status: "OPEN" | "CLOSED";
+    31→  openedAt: string;
+    32→  closedAt: string | null;
+    33→  openedBy: string | null;
+    34→  closedBy: string | null;
+    35→  note: string | null;
+    36→}
+    37→interface SessionsResp {
+    38→  sessions: CashSession[];
+    39→  open: (CashSession & { expected: number }) | null;
+    40→}
+    41→
+    42→async function fetchSessions(): Promise<SessionsResp> {
+    43→  const r = await fetch("/api/meat/cash/sessions");
+    44→  if (!r.ok) throw new Error("failed");
+    45→  return r.json();
+    46→}
+    47→
+    48→// ─── View ───────────────────────────────────────────────────────────────
+    49→export function CashControlView() {
+    50→  const { back } = useNav();
+    51→  const qc = useQueryClient();
+    52→  const [openDrawer, setOpenDrawer] = React.useState(false);
+    53→  const [closeDrawer, setCloseDrawer] = React.useState(false);
+    54→  const [justClosed, setJustClosed] = React.useState<CashSession | null>(null);
+    55→
+    56→  const { data, isLoading } = useQuery<SessionsResp>({
+    57→    queryKey: ["cash-sessions"],
+    58→    queryFn: fetchSessions,
+    59→  });
+    60→
+    61→  const open = data?.open ?? null;
+    62→  const closedSessions = (data?.sessions ?? []).filter((s) => s.status === "CLOSED");
+    63→  // Include justClosed session in the list if not already there (for immediate display)
+    64→  const allClosedSessions = justClosed && !closedSessions.find((s) => s.id === justClosed.id)
+    65→    ? [justClosed, ...closedSessions]
+    66→    : closedSessions;
+    67→
+    68→  function handleCloseSuccess(session: CashSession) {
+    69→    setJustClosed(session);
+    70→    qc.invalidateQueries({ queryKey: ["cash-sessions"] });
+    71→    qc.invalidateQueries({ queryKey: ["dashboard"] });
+    72→    qc.invalidateQueries({ queryKey: ["money"] });
+    73→    setCloseDrawer(false);
+    74→  }
+    75→
+    76→  function handleOpenSuccess() {
+    77→    qc.invalidateQueries({ queryKey: ["cash-sessions"] });
+    78→    qc.invalidateQueries({ queryKey: ["dashboard"] });
+    79→    qc.invalidateQueries({ queryKey: ["money"] });
+    80→    setOpenDrawer(false);
+    81→  }
+    82→
+    83→  return (
+    84→    <PageScaffold
+    85→      title="Cash Control"
+    86→      subtitle="Open and close the daily cash drawer"
+    87→      onBack={() => back()}
+    88→    >
+    89→      {isLoading ? (
+    90→        <ListSkeleton rows={3} />
+    91→      ) : open ? (
+    92→        <>
+    93→          {/* Current open session card */}
+    94→          <Card className="mb-5 overflow-hidden card-raised">
+    95→            <div className="flex items-center justify-between border-b border-border/60 bg-emerald-500/10 px-4 py-2.5">
+    96→              <div className="flex items-center gap-2">
+    97→                <span className="relative flex h-2.5 w-2.5">
+    98→                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+    99→                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+   100→                </span>
+   101→                <span className="text-sm font-semibold text-emerald-400">Current session</span>
+   102→              </div>
+   103→              <Pill tone="good">Open</Pill>
+   104→            </div>
+   105→            <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3">
+   106→              <MetaCell label="Opened at" value={formatDateTime(open.openedAt)} />
+   107→              <MetaCell label="Opening" value={formatBirr(open.opening)} tnum />
+   108→              <MetaCell label="Opened by" value={open.openedBy || "—"} />
+   109→              <MetaCell label="Date" value={formatDate(open.openedAt)} />
+   110→              <MetaCell label="Expected cash" value={formatBirr(open.expected ?? 0)} tnum accent="emerald" />
+   111→              <MetaCell label="Status" value="Live · recomputed" accent="emerald" />
+   112→            </div>
+   113→          </Card>
+   114→
+   115→          {/* Close Cash Drawer section */}
+   116→          <Card className="mb-5 card-raised">
+   117→            <div className="p-4">
+   118→              <div className="flex items-center gap-2">
+   119→                <svg viewBox="0 0 24 24" className="h-5 w-5 text-primary" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   120→                  <rect x="3" y="6" width="18" height="13" rx="2" />
+   121→                  <path d="M3 10h18" />
+   122→                  <path d="M14 15h3" />
+   123→                </svg>
+   124→                <h2 className="text-base font-semibold">Close Cash Drawer</h2>
+   125→              </div>
+   126→              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+   127→                Count the cash in the drawer and enter the total below. The system will compute the expected amount from sales, expenses, refunds, and manual movements during this session.
+   128→              </p>
+   129→
+   130→              <div className="mt-3 grid grid-cols-3 gap-2.5">
+   131→                <CloseStat label="Expected" value={open.expected ?? 0} tone="default" />
+   132→                <CloseStat label="Counted" value={null} tone="input" placeholder="0.00" />
+   133→                <CloseStat label="Difference" value={null} tone="diff" placeholder="—" />
+   134→              </div>
+   135→
+   136→              <Button
+   137→                onClick={() => setCloseDrawer(true)}
+   138→                className="mt-4 w-full bg-primary text-primary-foreground"
+   139→              >
+   140→                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+   141→                  <path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" />
+   142→                </svg>
+   143→                Close Cash Drawer
+   144→              </Button>
+   145→            </div>
+   146→          </Card>
+   147→        </>
+   148→      ) : (
+   149→        <>
+   150→          {/* Open Cash Drawer section */}
+   151→          <Card className="mb-5 card-raised">
+   152→            <div className="p-4">
+   153→              <div className="flex items-center gap-2">
+   154→                <svg viewBox="0 0 24 24" className="h-5 w-5 text-primary" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   155→                  <path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" />
+   156→                  <path d="M9 9l-2 3 2 3M15 9l2 3-2 3" />
+   157→                </svg>
+   158→                <h2 className="text-base font-semibold">Open Cash Drawer</h2>
+   159→              </div>
+   160→              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+   161→                Open the drawer by entering the starting cash amount. The system will track every cash sale, expense, purchase, and manual movement until you close the drawer.
+   162→              </p>
+   163→              <Button
+   164→                onClick={() => setOpenDrawer(true)}
+   165→                className="mt-4 w-full bg-primary text-primary-foreground"
+   166→              >
+   167→                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+   168→                  <path d="M12 5v14M5 12h14" />
+   169→                </svg>
+   170→                Open Cash Drawer
+   171→              </Button>
+   172→            </div>
+   173→          </Card>
+   174→        </>
+   175→      )}
+   176→
+   177→      {/* Just closed result */}
+   178→      {justClosed && (
+   179→        <Card className="mb-5 card-raised ring-1 ring-emerald-500/25">
+   180→          <div className="flex items-center gap-2 border-b border-border/60 bg-emerald-500/10 px-4 py-2.5">
+   181→            <svg viewBox="0 0 24 24" className="h-4 w-4 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+   182→              <path d="M20 6 9 17l-5-5" />
+   183→            </svg>
+   184→            <span className="text-sm font-semibold text-emerald-400">Drawer closed</span>
+   185→            <button
+   186→              onClick={() => setJustClosed(null)}
+   187→              className="ml-auto rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+   188→              aria-label="Dismiss"
+   189→            >
+   190→              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+   191→                <path d="M18 6 6 18M6 6l12 12" />
+   192→              </svg>
+   193→            </button>
+   194→          </div>
+   195→          <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
+   196→            <MetaCell label="Expected" value={formatBirr(justClosed.expected ?? 0)} tnum />
+   197→            <MetaCell label="Counted" value={formatBirr(justClosed.counted ?? 0)} tnum />
+   198→            <MetaCell
+   199→              label="Difference"
+   200→              value={formatBirr(Math.abs(justClosed.difference ?? 0))}
+   201→              tone={diffTone(justClosed.difference ?? 0)}
+   202→              accent={diffAccent(justClosed.difference ?? 0)}
+   203→            />
+   204→            <MetaCell label="Closed by" value={justClosed.closedBy || "—"} />
+   205→          </div>
+   206→        </Card>
+   207→      )}
+   208→
+   209→      {/* Past sessions */}
+   210→      <div className="mb-2 px-1">
+   211→        <h2 className="text-base font-semibold">Past Sessions</h2>
+   212→        <p className="text-xs text-muted-foreground">Closed cash drawer sessions</p>
+   213→      </div>
+   214→
+   215→      {isLoading ? (
+   216→        <ListSkeleton rows={3} />
+   217→      ) : allClosedSessions.length === 0 ? (
+   218→        <EmptyState
+   219→          icon={
+   220→            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+   221→              <rect x="3" y="6" width="18" height="13" rx="2" />
+   222→              <path d="M3 10h18" />
+   223→              <path d="M7 15h4" />
+   224→            </svg>
+   225→          }
+   226→          title="No closed sessions yet."
+   227→          description="Your closed cash drawer sessions will appear here."
+   228→        />
+   229→      ) : (
+   230→        <div className="space-y-2.5">
+   231→          {allClosedSessions.map((s) => (
+   232→            <SessionRow key={s.id} session={s} />
+   233→          ))}
+   234→        </div>
+   235→      )}
+   236→
+   237→      <OpenDrawerDialog
+   238→        open={openDrawer}
+   239→        onOpenChange={setOpenDrawer}
+   240→        onSuccess={handleOpenSuccess}
+   241→      />
+   242→      <CloseDrawerDialog
+   243→        open={closeDrawer}
+   244→        onOpenChange={setCloseDrawer}
+   245→        expected={open?.expected ?? 0}
+   246→        onSuccess={handleCloseSuccess}
+   247→      />
+   248→    </PageScaffold>
+   249→  );
+   250→}
+   251→
+   252→// ─── Row ────────────────────────────────────────────────────────────────
+   253→function SessionRow({ session: s }: { session: CashSession }) {
+   254→  const diff = s.difference ?? 0;
+   255→  return (
+   256→    <Card className="p-3.5 card-raised">
+   257→      <div className="flex items-start justify-between gap-3">
+   258→        <div className="flex min-w-0 items-center gap-2.5">
+   259→          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted/60 text-muted-foreground">
+   260→            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   261→              <rect x="3" y="6" width="18" height="13" rx="2" />
+   262→              <path d="M3 10h18" />
+   263→              <path d="M7 15h4" />
+   264→            </svg>
+   265→          </div>
+   266→          <div className="min-w-0">
+   267→            <p className="truncate text-sm font-semibold">
+   268→              {formatDate(s.openedAt)} · {formatTime(s.openedAt)}
+   269→              <span className="text-muted-foreground"> → </span>
+   270→              {s.closedAt ? `${formatTime(s.closedAt)}` : "—"}
+   271→            </p>
+   272→            <p className="mt-0.5 text-[11px] text-muted-foreground">
+   273→              Closed by {s.closedBy || "—"}
+   274→            </p>
+   275→            {s.note && (
+   276→              <p className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-400 ring-1 ring-violet-500/20">
+   277→                {s.note.includes("Transferred") ? "🏦" : "📝"} {s.note}
+   278→              </p>
+   279→            )}
+   280→            {!s.note && (
+   281→              <p className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-muted/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+   282→                No transfer
+   283→              </p>
+   284→            )}
+   285→          </div>
+   286→        </div>
+   287→        <div className="shrink-0 text-right">
+   288→          <div className="flex items-center gap-1.5 justify-end">
+   289→            <Pill tone="muted">Open {formatBirr(s.opening)}</Pill>
+   290→            <Pill tone={diffTone(diff)}>{diffLabel(diff)}</Pill>
+   291→          </div>
+   292→          <p className="mt-1 text-[11px] text-muted-foreground tnum">
+   293→            expected <Money amount={s.expected ?? 0} /> · counted <Money amount={s.counted ?? 0} />
+   294→          </p>
+   295→        </div>
+   296→      </div>
+   297→    </Card>
+   298→  );
+   299→}
+   300→
+   301→// ─── Open Drawer Dialog ─────────────────────────────────────────────────
+   302→function OpenDrawerDialog({
+   303→  open, onOpenChange, onSuccess,
+   304→}: {
+   305→  open: boolean;
+   306→  onOpenChange: (o: boolean) => void;
+   307→  onSuccess: () => void;
+   308→}) {
+   309→  const [opening, setOpening] = React.useState("");
+   310→  const [userName, setUserName] = React.useState("");
+   311→
+   312→  const canOpen = !!opening && (parseFloat(opening) || 0) >= 0;
+   313→
+   314→  const mut = useMutation({
+   315→    mutationFn: async () => {
+   316→      const r = await fetch("/api/meat/cash/sessions", {
+   317→        method: "POST",
+   318→        headers: { "Content-Type": "application/json" },
+   319→        body: JSON.stringify({
+   320→          action: "OPEN",
+   321→          opening: Number(opening) || 0,
+   322→          userName: userName.trim() || undefined,
+   323→        }),
+   324→      });
+   325→      if (!r.ok) {
+   326→        const j = await r.json().catch(() => null);
+   327→        throw new Error(j?.error || "failed");
+   328→      }
+   329→      return r.json();
+   330→    },
+   331→    onSuccess: () => {
+   332→      toast.success("Cash drawer opened");
+   333→      setOpening("");
+   334→      setUserName("");
+   335→      onSuccess();
+   336→    },
+   337→    onError: (e: Error) => toast.error(e.message || "Could not open drawer"),
+   338→  });
+   339→
+   340→  return (
+   341→    <Dialog open={open} onOpenChange={onOpenChange}>
+   342→      <DialogContent className="max-w-md">
+   343→        <DialogHeader>
+   344→          <DialogTitle>Open Cash Drawer</DialogTitle>
+   345→        </DialogHeader>
+   346→        <div className="space-y-3 py-2">
+   347→          <div>
+   348→            <Label className="text-xs">Opening amount (Br)</Label>
+   349→            <Input
+   350→              value={opening}
+   351→              onChange={(e) => setOpening(e.target.value)}
+   352→              inputMode="decimal"
+   353→              placeholder="0.00"
+   354→              className="mt-1 tnum text-lg"
+   355→              autoFocus
+   356→            />
+   357→            <p className="mt-1 text-[11px] text-muted-foreground">
+   358→              Count the cash currently in the drawer and enter the total.
+   359→            </p>
+   360→          </div>
+   361→          <div>
+   362→            <Label className="text-xs">Opened by (optional)</Label>
+   363→            <Input
+   364→              value={userName}
+   365→              onChange={(e) => setUserName(e.target.value)}
+   366→              placeholder="Cashier name"
+   367→              className="mt-1"
+   368→            />
+   369→          </div>
+   370→        </div>
+   371→        <DialogFooter>
+   372→          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+   373→          <Button
+   374→            onClick={() => mut.mutate()}
+   375→            disabled={mut.isPending || !canOpen}
+   376→            className="bg-primary text-primary-foreground"
+   377→          >
+   378→            {mut.isPending ? "Opening…" : "Open Drawer"}
+   379→          </Button>
+   380→        </DialogFooter>
+   381→      </DialogContent>
+   382→    </Dialog>
+   383→  );
+   384→}
+   385→
+   386→// ─── Close Drawer Dialog ────────────────────────────────────────────────
+   387→function CloseDrawerDialog({
+   388→  open, onOpenChange, expected, onSuccess,
+   389→}: {
+   390→  open: boolean;
+   391→  onOpenChange: (o: boolean) => void;
+   392→  expected: number;
+   393→  onSuccess: (session: CashSession) => void;
+   394→}) {
+   395→  const qc = useQueryClient();
+   396→  const [counted, setCounted] = React.useState("");
+   397→  const [note, setNote] = React.useState("");
+   398→  const [userName, setUserName] = React.useState("");
+   399→  const [transferEnabled, setTransferEnabled] = React.useState(false);
+   400→  const [transferAmount, setTransferAmount] = React.useState("");
+   401→  const [transferTo, setTransferTo] = React.useState<"MOBILE" | "BANK">("BANK");
+   402→  const [transferDetail, setTransferDetail] = React.useState("");
+   403→
+   404→  const countedN = parseFloat(counted) || 0;
+   405→  const diff = counted ? countedN - expected : 0;
+   406→  const transferN = parseFloat(transferAmount) || 0;
+   407→
+   408→  const mut = useMutation({
+   409→    mutationFn: async () => {
+   410→      // If transfer is enabled, create a money move (OUT from CASH, IN to selected account)
+   411→      if (transferEnabled && transferN > 0) {
+   412→        await fetch("/api/meat/money", {
+   413→          method: "POST",
+   414→          headers: { "Content-Type": "application/json" },
+   415→          body: JSON.stringify({
+   416→            direction: "OUT", account: "CASH", amount: transferN,
+   417→            reason: `Cash drawer transfer to ${transferTo}`,
+   418→            userName: userName.trim() || "Abebe Owner",
+   419→          }),
+   420→        });
+   421→        await fetch("/api/meat/money", {
+   422→          method: "POST",
+   423→          headers: { "Content-Type": "application/json" },
+   424→          body: JSON.stringify({
+   425→            direction: "IN", account: transferTo, detail: transferDetail || undefined,
+   426→            amount: transferN,
+   427→            reason: `Cash drawer transfer`,
+   428→            userName: userName.trim() || "Abebe Owner",
+   429→          }),
+   430→        });
+   431→      }
+   432→      // Build note with transfer info if applicable
+   433→      const transferNote = transferEnabled && transferN > 0
+   434→        ? `Transferred ${formatBirr(transferN)} to ${transferTo}${transferDetail ? ` · ${transferDetail}` : ""}`
+   435→        : "";
+   436→      const fullNote = [note.trim(), transferNote].filter(Boolean).join(" | ") || undefined;
+   437→      // Close the drawer
+   438→      const r = await fetch("/api/meat/cash/sessions", {
+   439→        method: "POST",
+   440→        headers: { "Content-Type": "application/json" },
+   441→        body: JSON.stringify({
+   442→          action: "CLOSE",
+   443→          counted: countedN,
+   444→          note: fullNote,
+   445→          userName: userName.trim() || undefined,
+   446→        }),
+   447→      });
+   448→      if (!r.ok) {
+   449→        const j = await r.json().catch(() => null);
+   450→        throw new Error(j?.error || "failed");
+   451→      }
+   452→      return r.json();
+   453→    },
+   454→    onSuccess: (data) => {
+   455→      toast.success(diff === 0 ? "Drawer closed — balanced" : diff > 0 ? `Drawer closed — over by ${formatBirr(diff)}` : `Drawer closed — short by ${formatBirr(Math.abs(diff))}`);
+   456→      if (transferEnabled && transferN > 0) {
+   457→        toast.success(`${formatBirr(transferN)} transferred to ${transferTo}`);
+   458→      }
+   459→      qc.invalidateQueries({ queryKey: ["dashboard"] });
+   460→      qc.invalidateQueries({ queryKey: ["money"] });
+   461→      qc.invalidateQueries({ queryKey: ["cash-sessions"] });
+   462→      const session: CashSession = data.session;
+   463→      setCounted(""); setNote(""); setUserName("");
+   464→      setTransferEnabled(false); setTransferAmount(""); setTransferDetail("");
+   465→      onSuccess(session);
+   466→    },
+   467→    onError: (e: Error) => toast.error(e.message || "Could not close drawer"),
+   468→  });
+   469→
+   470→  return (
+   471→    <Dialog open={open} onOpenChange={onOpenChange}>
+   472→      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
+   473→        <DialogHeader>
+   474→          <DialogTitle>Close Cash Drawer</DialogTitle>
+   475→          <DialogDescription className="sr-only">Count cash, optionally transfer to bank or mobile, then close the drawer.</DialogDescription>
+   476→        </DialogHeader>
+   477→        <div className="space-y-3 py-2">
+   478→          {/* Expected */}
+   479→          <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2.5">
+   480→            <span className="text-xs font-medium text-muted-foreground">Expected cash</span>
+   481→            <span className="text-base font-bold tnum">{formatBirr(expected)}</span>
+   482→          </div>
+   483→
+   484→          <div>
+   485→            <Label className="text-xs">Counted total (Br)</Label>
+   486→            <Input
+   487→              value={counted}
+   488→              onChange={(e) => setCounted(e.target.value)}
+   489→              inputMode="decimal"
+   490→              placeholder="0.00"
+   491→              className="mt-1 tnum text-lg"
+   492→              autoFocus
+   493→            />
+   494→          </div>
+   495→
+   496→          {/* Difference live */}
+   497→          {counted ? (
+   498→            <div className={cn(
+   499→              "flex items-center justify-between rounded-lg px-3 py-2.5 ring-1",
+   500→              diff === 0
+   501→                ? "bg-emerald-500/10 ring-emerald-500/25"
+   502→                : diff > 0
+   503→                ? "bg-emerald-500/10 ring-emerald-500/25"
+   504→                : "bg-red-500/10 ring-red-500/25",
+   505→            )}>
+   506→              <span className="text-xs font-medium text-muted-foreground">Difference</span>
+   507→              <Pill tone={diffTone(diff)}>{diffLabel(diff)}</Pill>
+   508→            </div>
+   509→          ) : (
+   510→            <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2.5">
+   511→              <span className="text-xs font-medium text-muted-foreground">Difference</span>
+   512→              <span className="text-sm font-semibold text-muted-foreground tnum">—</span>
+   513→            </div>
+   514→          )}
+   515→
+   516→          {/* Transfer option */}
+   517→          <div className="rounded-lg border border-border/60 p-2.5">
+   518→            <label className="flex items-center gap-2">
+   519→              <input type="checkbox" checked={transferEnabled} onChange={(e) => setTransferEnabled(e.target.checked)} className="h-4 w-4 rounded accent-primary" />
+   520→              <span className="text-xs font-semibold">Transfer cash to Bank or Mobile</span>
+   521→            </label>
+   522→            {transferEnabled && (
+   523→              <div className="mt-2.5 space-y-2">
+   524→                <div className="grid grid-cols-2 gap-1.5">
+   525→                  <button type="button" onClick={() => { setTransferTo("BANK"); setTransferDetail(""); }}
+   526→                    className={cn("rounded-lg py-2 text-xs font-semibold", transferTo === "BANK" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+   527→                    🏦 Bank
+   528→                  </button>
+   529→                  <button type="button" onClick={() => { setTransferTo("MOBILE"); setTransferDetail(""); }}
+   530→                    className={cn("rounded-lg py-2 text-xs font-semibold", transferTo === "MOBILE" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
+   531→                    📱 Mobile
+   532→                  </button>
+   533→                </div>
+   534→                <div>
+   535→                  <Label className="text-[10px]">Amount to transfer (Br)</Label>
+   536→                  <Input value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} inputMode="decimal" placeholder="e.g. 20000" className="mt-0.5 h-9 tnum text-sm" />
+   537→                  <div className="mt-1 flex gap-1.5">
+   538→                    <button type="button" onClick={() => setTransferAmount(String(countedN || expected))} className="rounded-md bg-muted/60 px-2 py-1 text-[10px] font-semibold">Full amount</button>
+   539→                    <button type="button" onClick={() => setTransferAmount(String(Math.round((countedN || expected) / 2)))} className="rounded-md bg-muted/60 px-2 py-1 text-[10px] font-semibold">Half</button>
+   540→                  </div>
+   541→                </div>
+   542→                <div>
+   543→                  <Label className="text-[10px]">{transferTo === "MOBILE" ? "Provider" : "Bank"}</Label>
+   544→                  <div className="mt-0.5">
+   545→                    <AccountProviderSelect method={transferTo} value={transferDetail} onChange={setTransferDetail} />
+   546→                  </div>
+   547→                </div>
+   548→              </div>
+   549→            )}
+   550→          </div>
+   551→
+   552→          <div>
+   553→            <Label className="text-xs">Closed by (optional)</Label>
+   554→            <Input value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Cashier name" className="mt-1" />
+   555→          </div>
+   556→
+   557→          <div>
+   558→            <Label className="text-xs">Note (optional)</Label>
+   559→            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="e.g. shift handover notes" className="mt-1" />
+   560→          </div>
+   561→        </div>
+   562→
+   563→        <DialogFooter>
+   564→          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+   565→          <Button
+   566→            onClick={() => mut.mutate()}
+   567→            disabled={mut.isPending || !counted}
+   568→            className="bg-primary text-primary-foreground"
+   569→          >
+   570→            {mut.isPending ? "Closing…" : "Close Cash Drawer"}
+   571→          </Button>
+   572→        </DialogFooter>
+   573→      </DialogContent>
+   574→    </Dialog>
+   575→  );
+   576→}
+   577→
+   578→// ─── Helpers ────────────────────────────────────────────────────────────
+   579→function diffTone(diff: number): "good" | "bad" {
+   580→  if (diff === 0) return "good";
+   581→  return diff > 0 ? "good" : "bad";
+   582→}
+   583→
+   584→function diffAccent(diff: number): "emerald" | "red" | undefined {
+   585→  if (diff === 0) return "emerald";
+   586→  return diff > 0 ? "emerald" : "red";
+   587→}
+   588→
+   589→function diffLabel(diff: number): string {
+   590→  if (diff === 0) return "Balanced";
+   591→  if (diff > 0) return `Over by ${formatBirr(diff)}`;
+   592→  return `Short by ${formatBirr(Math.abs(diff))}`;
+   593→}
+   594→
+   595→// ─── Small display pieces ───────────────────────────────────────────────
+   596→function MetaCell({
+   597→  label, value, tnum, tone, accent,
+   598→}: {
+   599→  label: string;
+   600→  value: string;
+   601→  tnum?: boolean;
+   602→  tone?: "good" | "bad";
+   603→  accent?: "emerald" | "red";
+   604→}) {
+   605→  const valueCls = tone === "good"
+   606→    ? "text-emerald-400"
+   607→    : tone === "bad"
+   608→    ? "text-red-400"
+   609→    : accent === "emerald"
+   610→    ? "text-emerald-400"
+   611→    : accent === "red"
+   612→    ? "text-red-400"
+   613→    : "text-foreground";
+   614→  return (
+   615→    <div className="rounded-lg bg-muted/40 px-2.5 py-2">
+   616→      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+   617→      <p className={cn("truncate text-xs font-medium", valueCls, tnum && "tnum")}>{value}</p>
+   618→    </div>
+   619→  );
+   620→}
+   621→
+   622→function CloseStat({
+   623→  label, value, tone, placeholder,
+   624→}: {
+   625→  label: string;
+   626→  value: number | null;
+   627→  tone: "default" | "input" | "diff";
+   628→  placeholder?: string;
+   629→}) {
+   630→  // input & diff tones are placeholders in the static display; only "Expected" has a value here
+   631→  const isAccent = tone === "input" || tone === "diff";
+   632→  return (
+   633→    <div className={cn(
+   634→      "rounded-lg p-2.5 ring-1",
+   635→      tone === "default"
+   636→        ? "bg-muted/40 ring-border/60"
+   637→        : "bg-card/40 ring-border/40",
+   638→    )}>
+   639→      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+   640→      <p className={cn(
+   641→        "mt-1 text-sm font-bold tnum",
+   642→        isAccent && "text-muted-foreground",
+   643→      )}>
+   644→        {value !== null ? formatBirr(value) : (placeholder || "—")}
+   645→      </p>
+   646→    </div>
+   647→  );
+   648→}
+   649→

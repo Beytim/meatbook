@@ -15,6 +15,7 @@ import {
 import {
   PageScaffold, Pill, ListSkeleton, SectionHeader,
 } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface License {
@@ -35,6 +36,7 @@ interface SettingsResp {
 export function LicenseView() {
   const { back } = useNav();
   const qc = useQueryClient();
+  const { t } = useLang();
   const [renewOpen, setRenewOpen] = React.useState(false);
 
   const { data, isLoading } = useQuery<LicenseResp>({
@@ -63,8 +65,8 @@ export function LicenseView() {
 
   return (
     <PageScaffold
-      title="License"
-      subtitle="Renewal status & activation"
+      title={t("license.title")}
+      subtitle={t("license.subtitle")}
       onBack={() => back()}
       right={
         <Button
@@ -75,7 +77,7 @@ export function LicenseView() {
           <svg viewBox="0 0 24 24" className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 12a9 9 0 1 1-9-9c2.39 0 4.68.94 6.4 2.6" /><path d="M21 3v6h-6" />
           </svg>
-          Renew License
+          {t("license.renew")}
         </Button>
       }
     >
@@ -106,7 +108,7 @@ export function LicenseView() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Days Remaining
+                    {t("license.daysRemaining")}
                   </p>
                   <Pill tone={isActive ? "good" : "bad"}>
                     {license.status}
@@ -126,15 +128,15 @@ export function LicenseView() {
 
           {/* Details grid */}
           <div className="mb-3">
-            <SectionHeader title="License Details" subtitle="Activation, plan and validity" />
+            <SectionHeader title={t("license.details")} subtitle="Activation, plan and validity" />
           </div>
           <Card className="mb-5 p-4 card-raised">
             <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
-              <DetailCell label="Shop ID" value={license.shopId || "—"} mono />
-              <DetailCell label="License ID" value={license.licenseId || "—"} mono />
-              <DetailCell label="Plan" value={<Pill tone="primary">{license.plan || "Standard"}</Pill>} />
+              <DetailCell label={t("license.shopId")} value={license.shopId || "—"} mono />
+              <DetailCell label={t("license.licenseId")} value={license.licenseId || "—"} mono />
+              <DetailCell label={t("license.plan")} value={<Pill tone="primary">{license.plan || "Standard"}</Pill>} />
               <DetailCell
-                label="Status"
+                label={t("common.status")}
                 value={<Pill tone={isActive ? "good" : "bad"}>{license.status}</Pill>}
               />
             </div>
@@ -146,15 +148,15 @@ export function LicenseView() {
             </p>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
               <DetailCell
-                label="Start Date"
+                label={t("license.startDate")}
                 value={startDate ? <span className="tnum">{formatDate(startDate)}</span> : "—"}
               />
               <DetailCell
-                label="Expiry Date"
+                label={t("license.expiryDate")}
                 value={expiryDate ? <span className="tnum">{formatDate(expiryDate)}</span> : "—"}
               />
               <DetailCell
-                label="Active"
+                label={t("license.active")}
                 value={
                   <Pill tone={isActive ? "good" : "bad"}>
                     {isActive ? "Yes" : "No"}
@@ -186,7 +188,7 @@ export function LicenseView() {
               onClick={() => setRenewOpen(true)}
               className="mt-3 tap-scale"
             >
-              Renew License
+              {t("license.renew")}
             </Button>
           </Card>
         </>
@@ -237,6 +239,7 @@ function RenewLicenseDialog({
 }) {
   const [key, setKey] = React.useState("");
   const qc = useQueryClient();
+  const { t } = useLang();
 
   React.useEffect(() => {
     if (!open) setKey("");
@@ -290,7 +293,7 @@ function RenewLicenseDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Renew License</DialogTitle>
+          <DialogTitle>{t("license.renew")}</DialogTitle>
           <DialogDescription>
             Paste a signed renewal key from the MeatBook owner to extend your license.
           </DialogDescription>
@@ -341,7 +344,7 @@ function RenewLicenseDialog({
             disabled={!canSubmit}
             className="bg-primary text-primary-foreground"
           >
-            {renewMut.isPending ? "Activating…" : "Activate"}
+            {renewMut.isPending ? "Activating…" : t("license.activate")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -15,6 +15,7 @@ import {
 import {
   PeriodTabs, EmptyState, Pill, PageScaffold, ListSkeleton, Money,
 } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface Split {
@@ -41,6 +42,15 @@ const CATEGORIES = [
   "Sales", "Products", "Money", "Purchases", "Expenses", "Waste", "Profit",
 ] as const;
 type Category = (typeof CATEGORIES)[number];
+const CATEGORY_KEYS: Record<Category, string> = {
+  Sales: "reports.sales",
+  Products: "reports.products",
+  Money: "reports.money",
+  Purchases: "reports.purchases",
+  Expenses: "reports.expenses",
+  Waste: "reports.waste",
+  Profit: "reports.profit",
+};
 
 // Chart palette
 const MEAT_RED = "#e0533f";
@@ -66,6 +76,7 @@ const TOOLTIP_STYLE = {
 // ─── View ───────────────────────────────────────────────────────────────
 export function ReportsView() {
   const { back } = useNav();
+  const { t } = useLang();
   const [period, setPeriod] = React.useState<PeriodKey>("30D");
   const [cat, setCat] = React.useState<Category>("Sales");
   const { data, isLoading } = useQuery<ReportsData>({
@@ -75,8 +86,8 @@ export function ReportsView() {
 
   return (
     <PageScaffold
-      title="Reports"
-      subtitle={`Period: ${periodLabel(period)}`}
+      title={t("reports.title")}
+      subtitle={`${t("common.from")} ${periodLabel(period)}`}
       onBack={() => back()}
     >
       <div className="mb-4">
@@ -101,7 +112,7 @@ export function ReportsView() {
                   : "bg-muted/60 text-muted-foreground",
               )}
             >
-              {c}
+              {t(CATEGORY_KEYS[c])}
             </button>
           ))}
         </div>
@@ -111,16 +122,16 @@ export function ReportsView() {
         <ListSkeleton rows={4} />
       ) : !data ? (
         <EmptyState
-          title="Could not load reports."
-          description="Try again later."
+          title={t("common.loading")}
+          description={t("common.loading")}
         />
       ) : (
         <>
           {cat === "Sales" && <SalesReport data={data} />}
           {cat === "Products" && <ProductsReport data={data} />}
           {cat === "Money" && <MoneyReport data={data} />}
-          {cat === "Purchases" && <SimpleTotalReport tone="sky" label="Total Purchases" value={data.purchases} caption="Cost of meat bought from suppliers in this period." sub="Logged in Purchases view." />}
-          {cat === "Expenses" && <SimpleTotalReport tone="amber" label="Total Expenses" value={data.expenses} caption="Operating expenses recorded in this period." sub="Logged in Expenses view." />}
+          {cat === "Purchases" && <SimpleTotalReport tone="sky" label={t("reports.purchases")} value={data.purchases} caption={t("purchases.subtitle")} sub={t("purchases.title")} />}
+          {cat === "Expenses" && <SimpleTotalReport tone="amber" label={t("reports.expenses")} value={data.expenses} caption={t("expenses.subtitle")} sub={t("expenses.title")} />}
           {cat === "Waste" && <WasteReport data={data} />}
           {cat === "Profit" && <ProfitReport data={data} />}
         </>
@@ -133,10 +144,11 @@ export function ReportsView() {
 // SALES
 // ════════════════════════════════════════════════════════════════════════
 function SalesReport({ data }: { data: ReportsData }) {
+  const { t } = useLang();
   const total = data.split.takeHome.revenue + data.split.eatHere.revenue;
   const splitData = [
-    { name: "Take Home", value: Math.round(data.split.takeHome.revenue * 100) / 100, color: AMBER },
-    { name: "Eat Here", value: Math.round(data.split.eatHere.revenue * 100) / 100, color: EMERALD },
+    { name: t("sell.takeHome"), value: Math.round(data.split.takeHome.revenue * 100) / 100, color: AMBER },
+    { name: t("sell.eatHere"), value: Math.round(data.split.eatHere.revenue * 100) / 100, color: EMERALD },
   ].filter((d) => d.value > 0);
 
   return (
@@ -145,7 +157,7 @@ function SalesReport({ data }: { data: ReportsData }) {
       <Card className="overflow-hidden card-raised">
         <div className="bg-gradient-to-br from-primary/15 via-card to-card p-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Net Revenue
+            {t("reports.netRevenue")}
           </p>
           <p className="mt-1 text-3xl font-bold tnum tracking-tight">
             {formatBirr(data.netRevenue)}
@@ -153,13 +165,13 @@ function SalesReport({ data }: { data: ReportsData }) {
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Sales Count
+                {t("reports.salesCount")}
               </p>
               <p className="text-base font-bold tnum">{data.salesCount}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Kg Sold
+                {t("reports.kgSold")}
               </p>
               <p className="text-base font-bold tnum">{formatKg(data.kgSold)}</p>
             </div>
@@ -169,10 +181,10 @@ function SalesReport({ data }: { data: ReportsData }) {
 
       {/* OUT vs IN Revenue Split */}
       <Card className="p-4 card-raised">
-        <h3 className="mb-3 text-sm font-semibold">OUT vs IN Revenue Split</h3>
+        <h3 className="mb-3 text-sm font-semibold">{t("reports.byProduct")}</h3>
         {total === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground">
-            No sales in this period.
+            {t("salesHistory.empty")}
           </p>
         ) : (
           <div className="grid grid-cols-[140px_1fr] items-center gap-4">
@@ -201,18 +213,18 @@ function SalesReport({ data }: { data: ReportsData }) {
             <div className="space-y-3">
               <div className="text-center">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Total
+                  {t("common.total")}
                 </p>
                 <p className="text-sm font-bold tnum">{formatBirr(total)}</p>
               </div>
               <SplitRow
                 tone="amber"
-                label="Take Home · OUT"
+                label={`${t("sell.takeHome")} · OUT`}
                 split={data.split.takeHome}
               />
               <SplitRow
                 tone="emerald"
-                label="Eat Here · IN"
+                label={`${t("sell.eatHere")} · IN`}
                 split={data.split.eatHere}
               />
             </div>
@@ -222,10 +234,10 @@ function SalesReport({ data }: { data: ReportsData }) {
 
       {/* Revenue by Payment Method */}
       <Card className="p-4 card-raised">
-        <h3 className="mb-3 text-sm font-semibold">Revenue by Payment Method</h3>
+        <h3 className="mb-3 text-sm font-semibold">{t("reports.byMethod")}</h3>
         {data.paymentMethods.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground">
-            No sales in this period.
+            {t("salesHistory.empty")}
           </p>
         ) : (
           <div className="space-y-3">
@@ -327,6 +339,7 @@ function PaymentMethodRow({
 // PRODUCTS
 // ════════════════════════════════════════════════════════════════════════
 function ProductsReport({ data }: { data: ReportsData }) {
+  const { t } = useLang();
   const top = data.products.slice(0, 8);
   const max = Math.max(...top.map((p) => p.revenue), 1);
   return (
@@ -334,23 +347,22 @@ function ProductsReport({ data }: { data: ReportsData }) {
       <Card className="overflow-hidden card-raised">
         <div className="bg-gradient-to-br from-primary/15 via-card to-card p-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Top Products · Revenue
+            {t("home.topProducts")}
           </p>
           <p className="mt-1 text-2xl font-bold tnum tracking-tight">
             {formatBirr(data.products.reduce((a, b) => a + b.revenue, 0))}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {data.products.length}{" "}
-            {data.products.length === 1 ? "product" : "products"} sold in this period
+            {data.products.length} {t("reports.products").toLowerCase()}
           </p>
         </div>
       </Card>
 
       <Card className="p-4 card-raised">
-        <h3 className="mb-3 text-sm font-semibold">Top Products by Revenue</h3>
+        <h3 className="mb-3 text-sm font-semibold">{t("home.topProducts")}</h3>
         {top.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground">
-            No products sold in this period.
+            {t("salesHistory.empty")}
           </p>
         ) : (
           <div className="space-y-3">
@@ -389,6 +401,7 @@ function ProductsReport({ data }: { data: ReportsData }) {
 // MONEY
 // ════════════════════════════════════════════════════════════════════════
 function MoneyReport({ data }: { data: ReportsData }) {
+  const { t } = useLang();
   const moneyIn = data.netRevenue;
   const moneyOut = data.expenses + data.purchases;
   const net = moneyIn - moneyOut;
@@ -399,7 +412,7 @@ function MoneyReport({ data }: { data: ReportsData }) {
       <Card className="overflow-hidden card-raised">
         <div className="bg-gradient-to-br from-primary/15 via-card to-card p-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Net Cash
+            {t("money.netFlow")}
           </p>
           <p
             className={cn(
@@ -409,42 +422,42 @@ function MoneyReport({ data }: { data: ReportsData }) {
           >
             {formatBirr(net)}
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">In − Out</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t("money.moneyIn")} − {t("money.moneyOut")}</p>
         </div>
         <div className="grid grid-cols-2 divide-x divide-border/60">
           <div className="p-4">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Money In
+                {t("money.moneyIn")}
               </p>
             </div>
             <p className="mt-1 text-base font-bold tnum text-emerald-400">
               {formatBirr(moneyIn)}
             </p>
-            <p className="text-[11px] text-muted-foreground">From sales</p>
+            <p className="text-[11px] text-muted-foreground">{t("reports.sales")}</p>
           </div>
           <div className="p-4">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-red-400" />
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Money Out
+                {t("money.moneyOut")}
               </p>
             </div>
             <p className="mt-1 text-base font-bold tnum text-red-400">
               {formatBirr(moneyOut)}
             </p>
-            <p className="text-[11px] text-muted-foreground">Expenses + Purchases</p>
+            <p className="text-[11px] text-muted-foreground">{t("reports.expenses")} + {t("reports.purchases")}</p>
           </div>
         </div>
       </Card>
 
       <Card className="p-4 card-raised">
-        <h3 className="mb-3 text-sm font-semibold">Money Sources &amp; Uses</h3>
+        <h3 className="mb-3 text-sm font-semibold">{t("reports.money")}</h3>
         <div className="space-y-3">
-          <BarRow label="Sales (In)" value={data.netRevenue} max={max} tone="emerald" />
-          <BarRow label="Expenses (Out)" value={data.expenses} max={max} tone="red" />
-          <BarRow label="Purchases (Out)" value={data.purchases} max={max} tone="red" />
+          <BarRow label={`${t("reports.sales")} (${t("money.moneyIn")})`} value={data.netRevenue} max={max} tone="emerald" />
+          <BarRow label={`${t("reports.expenses")} (${t("money.moneyOut")})`} value={data.expenses} max={max} tone="red" />
+          <BarRow label={`${t("reports.purchases")} (${t("money.moneyOut")})`} value={data.purchases} max={max} tone="red" />
         </div>
       </Card>
     </div>
@@ -522,22 +535,23 @@ function SimpleTotalReport({
 // WASTE
 // ════════════════════════════════════════════════════════════════════════
 function WasteReport({ data }: { data: ReportsData }) {
+  const { t } = useLang();
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden card-raised">
         <div className="bg-gradient-to-br from-red-500/15 via-card to-card p-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Total Waste
+            {t("wastage.totalWasted")}
           </p>
           <p className="mt-1 text-3xl font-bold tnum tracking-tight text-red-400">
             {formatKg(data.wastageKg)}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Meat discarded in this period
+            {t("wastage.subtitle")}
           </p>
         </div>
         <div className="p-4 text-xs text-muted-foreground">
-          Logged in Wastage view. Trim losses, spoilage, and refused cuts go here.
+          {t("wastage.subtitle")}
         </div>
       </Card>
     </div>
@@ -548,14 +562,15 @@ function WasteReport({ data }: { data: ReportsData }) {
 // PROFIT
 // ════════════════════════════════════════════════════════════════════════
 function ProfitReport({ data }: { data: ReportsData }) {
+  const { t } = useLang();
   const profit = data.profit;
   const margin = data.netRevenue > 0 ? (profit / data.netRevenue) * 100 : 0;
   const chartData = [
-    { name: "Revenue", value: Math.round(data.netRevenue * 100) / 100, color: MEAT_RED },
-    { name: "Purchases", value: Math.round(data.purchases * 100) / 100, color: SKY },
-    { name: "Expenses", value: Math.round(data.expenses * 100) / 100, color: AMBER },
+    { name: t("reports.revenue"), value: Math.round(data.netRevenue * 100) / 100, color: MEAT_RED },
+    { name: t("reports.purchases"), value: Math.round(data.purchases * 100) / 100, color: SKY },
+    { name: t("reports.expenses"), value: Math.round(data.expenses * 100) / 100, color: AMBER },
     {
-      name: "Profit",
+      name: t("reports.profit"),
       value: Math.round(profit * 100) / 100,
       color: profit >= 0 ? EMERALD : RED_BAD,
     },
@@ -573,7 +588,7 @@ function ProfitReport({ data }: { data: ReportsData }) {
           )}
         >
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Net Profit
+            {t("reports.netProfit")}
           </p>
           <p
             className={cn(
@@ -584,23 +599,23 @@ function ProfitReport({ data }: { data: ReportsData }) {
             {formatBirr(profit)}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Revenue − Purchases − Expenses
+            {t("reports.revenue")} − {t("reports.purchases")} − {t("reports.expenses")}
           </p>
           <div className="mt-2 flex items-center gap-2">
             <Pill tone={profit >= 0 ? "good" : "bad"}>
-              {margin.toFixed(1)}% margin
+              {margin.toFixed(1)}% {t("reports.margin")}
             </Pill>
           </div>
         </div>
         <div className="grid grid-cols-3 divide-x divide-border/60">
-          <ProfitCell label="Revenue" value={data.netRevenue} tone="default" />
-          <ProfitCell label="Purchases" value={-data.purchases} tone="bad" />
-          <ProfitCell label="Expenses" value={-data.expenses} tone="bad" />
+          <ProfitCell label={t("reports.revenue")} value={data.netRevenue} tone="default" />
+          <ProfitCell label={t("reports.purchases")} value={-data.purchases} tone="bad" />
+          <ProfitCell label={t("reports.expenses")} value={-data.expenses} tone="bad" />
         </div>
       </Card>
 
       <Card className="p-4 card-raised">
-        <h3 className="mb-3 text-sm font-semibold">Profit Breakdown</h3>
+        <h3 className="mb-3 text-sm font-semibold">{t("reports.profit")}</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart

@@ -20,6 +20,8 @@ import {
   PeriodTabs, SearchInput, EmptyState, Pill,
   PageScaffold, ListSkeleton, Money, Kg,
 } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
+import { t as translate, type Lang } from "@/lib/i18n";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface SaleItem { name: string; unitPrice: number; kg: number; total: number; }
@@ -53,11 +55,11 @@ interface Settings {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
-function paymentLabel(method: string, detail?: string | null): string {
+function paymentLabelT(method: string, detail?: string | null, lang: Lang = "en"): string {
   const m = (method || "").toUpperCase();
-  if (m === "CASH") return "Cash";
-  if (m === "MOBILE") return `Mobile${detail ? ` · ${detail}` : ""}`;
-  if (m === "BANK") return `Bank${detail ? ` · ${detail}` : ""}`;
+  if (m === "CASH") return translate("sell.cash", lang);
+  if (m === "MOBILE") return `${translate("sell.mobile", lang)}${detail ? ` · ${detail}` : ""}`;
+  if (m === "BANK") return `${translate("sell.bank", lang)}${detail ? ` · ${detail}` : ""}`;
   return method || "—";
 }
 
@@ -70,6 +72,7 @@ async function fetchSales(period: PeriodKey, q: string): Promise<SalesResp> {
 // ─── View ───────────────────────────────────────────────────────────────
 export function ReceiptsView() {
   const { back } = useNav();
+  const { t, lang } = useLang();
   const [period, setPeriod] = React.useState<PeriodKey>("TODAY");
   const [q, setQ] = React.useState("");
   const [customFrom, setCustomFrom] = React.useState<string>(() => {
@@ -85,8 +88,8 @@ export function ReceiptsView() {
   // Debounce search
   const [debouncedQ, setDebouncedQ] = React.useState(q);
   React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q), 250);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setDebouncedQ(q), 250);
+    return () => clearTimeout(tm);
   }, [q]);
 
   const isCustom = period === "CUSTOM";
@@ -136,8 +139,8 @@ export function ReceiptsView() {
 
   return (
     <PageScaffold
-      title="Receipts"
-      subtitle="Reprint or share any sale receipt"
+      title={t("receipts.title")}
+      subtitle={t("receipts.subtitle")}
       onBack={() => back()}
     >
       <div className="mb-4">
@@ -151,7 +154,7 @@ export function ReceiptsView() {
       {isCustom && (
         <Card className="mb-4 grid grid-cols-2 gap-3 p-3 card-raised">
           <div>
-            <Label className="text-xs text-muted-foreground">From</Label>
+            <Label className="text-xs text-muted-foreground">{t("common.from")}</Label>
             <Input
               type="date"
               value={customFrom}
@@ -160,7 +163,7 @@ export function ReceiptsView() {
             />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">To</Label>
+            <Label className="text-xs text-muted-foreground">{t("common.to")}</Label>
             <Input
               type="date"
               value={customTo}
@@ -174,7 +177,7 @@ export function ReceiptsView() {
       <SearchInput
         value={q}
         onChange={setQ}
-        placeholder="Search by sale # or product…"
+        placeholder={`${t("common.search")}…`}
         className="mb-4"
       />
 
@@ -188,13 +191,13 @@ export function ReceiptsView() {
               <path d="M9 8h6M9 12h6M9 16h4" />
             </svg>
           }
-          title="No receipts yet."
-          description="Your completed sales will appear here for reprinting and sharing."
+          title={t("receipts.noReceipts")}
+          description={t("receipts.subtitle")}
         />
       ) : (
         <div className="space-y-2.5">
           {sales.map((s) => (
-            <ReceiptCard key={s.id} sale={s} onOpen={() => setOpenId(s.id)} />
+            <ReceiptCard key={s.id} sale={s} onOpen={() => setOpenId(s.id)} lang={lang} />
           ))}
         </div>
       )}
@@ -203,13 +206,15 @@ export function ReceiptsView() {
         id={openId}
         onClose={() => setOpenId(null)}
         settings={settings}
+        lang={lang}
       />
     </PageScaffold>
   );
 }
 
 // ─── Receipt card ───────────────────────────────────────────────────────
-function ReceiptCard({ sale, onOpen }: { sale: Sale; onOpen: () => void }) {
+function ReceiptCard({ sale, onOpen, lang }: { sale: Sale; onOpen: () => void; lang: Lang }) {
+  const { t } = useLang();
   const isTakeHome = sale.type === "TAKE_HOME";
   const itemCount = sale.items.length;
   return (
@@ -242,16 +247,16 @@ function ReceiptCard({ sale, onOpen }: { sale: Sale; onOpen: () => void }) {
               <Money amount={sale.total} />
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {paymentLabel(sale.paymentMethod, sale.paymentDetail)}
+              {paymentLabelT(sale.paymentMethod, sale.paymentDetail, lang)}
             </p>
           </div>
         </div>
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
           <Pill tone={isTakeHome ? "warn" : "good"}>
-            {isTakeHome ? "Take Home" : "Eat Here"}
+            {isTakeHome ? t("sell.takeHome") : t("sell.eatHere")}
           </Pill>
           <span className="text-[11px] text-muted-foreground">
-            {itemCount} {itemCount === 1 ? "item" : "items"} · <Kg kg={sale.totalKg} />
+            {itemCount} {itemCount === 1 ? t("common.item") : t("common.items")} · <Kg kg={sale.totalKg} />
           </span>
         </div>
       </button>
@@ -264,11 +269,15 @@ export function ReceiptDialog({
   id,
   onClose,
   settings,
+  lang,
 }: {
   id: string | null;
   onClose: () => void;
   settings?: Settings;
+  lang?: Lang;
 }) {
+  const { t } = useLang();
+  const effectiveLang: Lang = lang ?? "en";
   const { data, isLoading } = useQuery<{ sale: Sale }>({
     queryKey: ["sale", id],
     queryFn: async () => {
@@ -282,10 +291,10 @@ export function ReceiptDialog({
 
   const onShare = React.useCallback(async () => {
     if (!sale) return;
-    const text = buildReceiptText(sale, settings);
+    const text = buildReceiptText(sale, settings, effectiveLang);
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        await navigator.share({ title: `Receipt #${sale.number}`, text });
+        await navigator.share({ title: `${t("receipts.receipt")} #${sale.number}`, text });
         return;
       }
     } catch {
@@ -294,31 +303,31 @@ export function ReceiptDialog({
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(text);
-        toast.success("Receipt copied to clipboard");
+        toast.success(t("receipts.share"));
         return;
       }
     } catch {
       // ignore
     }
-    toast.error("Couldn't share receipt. Try Reprint.");
-  }, [sale, settings]);
+    toast.error(t("saleFailed"));
+  }, [sale, settings, effectiveLang, t]);
 
   const onReprint = React.useCallback(() => {
-    toast.success(`Reprinting receipt #${sale?.number ?? ""}`);
-  }, [sale]);
+    toast.success(`${t("receipts.reprint")} #${sale?.number ?? ""}`);
+  }, [sale, t]);
 
   return (
     <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md p-4 sm:p-5">
         <DialogHeader className="text-center">
           <DialogTitle className="flex items-center justify-center gap-2 text-base">
-            <span>Receipt</span>
+            <span>{t("receipts.receipt")}</span>
             {sale && <span className="tnum">#{sale.number}</span>}
           </DialogTitle>
         </DialogHeader>
         {isLoading || !sale ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
-            Loading receipt…
+            {t("common.loading")}
           </div>
         ) : (
           <>
@@ -338,11 +347,11 @@ export function ReceiptDialog({
                 </div>
                 <div className="my-2 border-t border-dashed border-border/70" />
                 <div className="space-y-0.5">
-                  <Row k="Sale #" v={`#${sale.number}`} />
-                  <Row k="Date" v={formatDateTime(sale.createdAt)} />
-                  <Row k="Cashier" v={sale.cashierName || "—"} />
-                  <Row k="Type" v={sale.type === "TAKE_HOME" ? "Take Home" : "Eat Here"} />
-                  <Row k="Payment" v={paymentLabel(sale.paymentMethod, sale.paymentDetail)} />
+                  <Row k={`${t("salesHistory.sale")} #`} v={`#${sale.number}`} />
+                  <Row k={t("common.date")} v={formatDateTime(sale.createdAt)} />
+                  <Row k={t("common.cashier")} v={sale.cashierName || "—"} />
+                  <Row k={t("common.type")} v={sale.type === "TAKE_HOME" ? t("sell.takeHome") : t("sell.eatHere")} />
+                  <Row k={t("common.payment")} v={paymentLabelT(sale.paymentMethod, sale.paymentDetail, effectiveLang)} />
                 </div>
                 <div className="my-2 border-t border-dashed border-border/70" />
                 <div className="space-y-1">
@@ -358,12 +367,12 @@ export function ReceiptDialog({
                     </div>
                   ))}
                   {sale.items.length === 0 && (
-                    <p className="text-center text-muted-foreground">No items</p>
+                    <p className="text-center text-muted-foreground">{t("sell.emptyCart")}</p>
                   )}
                 </div>
                 <div className="my-2 border-t border-dashed border-border/70" />
                 <div className="flex items-center justify-between text-[14px] font-bold">
-                  <span>TOTAL</span>
+                  <span>{t("common.total").toUpperCase()}</span>
                   <span className="tnum">{formatBirr(sale.total)}</span>
                 </div>
                 <div className="my-2 border-t border-dashed border-border/70" />
@@ -371,7 +380,7 @@ export function ReceiptDialog({
                   {settings?.receiptFooter || "Thank you! Meat sold by kg. Keep refrigerated."}
                 </p>
                 <p className="mt-1 text-center text-[10px] text-muted-foreground">
-                  {formatTime(sale.createdAt)} · {sale.cashierName || "Cashier"}
+                  {formatTime(sale.createdAt)} · {sale.cashierName || t("common.cashier")}
                 </p>
               </div>
             </div>
@@ -383,14 +392,14 @@ export function ReceiptDialog({
                 <svg viewBox="0 0 24 24" className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" />
                 </svg>
-                Reprint
+                {t("receipts.reprint")}
               </Button>
               <Button onClick={onShare} className="w-full bg-primary text-primary-foreground">
                 <svg viewBox="0 0 24 24" className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
                   <path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5" />
                 </svg>
-                Share
+                {t("receipts.share")}
               </Button>
             </div>
           </>
@@ -410,24 +419,24 @@ function Row({ k, v }: { k: string; v: string }) {
 }
 
 // Build a plain-text version of the receipt for sharing / clipboard.
-function buildReceiptText(sale: Sale, settings?: Settings): string {
+function buildReceiptText(sale: Sale, settings: Settings | undefined, lang: Lang): string {
   const header = settings?.receiptHeader || settings?.shopName || "Kera Fresh Meat Shop";
   const footer = settings?.receiptFooter || "Thank you! Meat sold by kg. Keep refrigerated.";
   const lines: string[] = [];
   lines.push(header);
   lines.push("=".repeat(28));
-  lines.push(`Sale #    : #${sale.number}`);
-  lines.push(`Date      : ${formatDateTime(sale.createdAt)}`);
-  lines.push(`Cashier   : ${sale.cashierName || "—"}`);
-  lines.push(`Type      : ${sale.type === "TAKE_HOME" ? "Take Home" : "Eat Here"}`);
-  lines.push(`Payment   : ${paymentLabel(sale.paymentMethod, sale.paymentDetail)}`);
+  lines.push(`${translate("salesHistory.sale", lang)} #   : #${sale.number}`);
+  lines.push(`${translate("common.date", lang)}      : ${formatDateTime(sale.createdAt)}`);
+  lines.push(`${translate("common.cashier", lang)}   : ${sale.cashierName || "—"}`);
+  lines.push(`${translate("common.type", lang)}      : ${sale.type === "TAKE_HOME" ? translate("sell.takeHome", lang) : translate("sell.eatHere", lang)}`);
+  lines.push(`${translate("common.payment", lang)}   : ${paymentLabelT(sale.paymentMethod, sale.paymentDetail, lang)}`);
   lines.push("-".repeat(28));
   for (const it of sale.items) {
     lines.push(`${it.name}`);
     lines.push(`  ${formatKg(it.kg)} x ${formatBirr(it.unitPrice)} = ${formatBirr(it.total)}`);
   }
   lines.push("-".repeat(28));
-  lines.push(`TOTAL     : ${formatBirr(sale.total)}`);
+  lines.push(`${translate("common.total", lang).toUpperCase()}     : ${formatBirr(sale.total)}`);
   lines.push("=".repeat(28));
   lines.push(footer);
   return lines.join("\n");

@@ -25,6 +25,8 @@ import {
 } from "@/components/app/primitives";
 import { AccountProviderSelect } from "@/components/app/account-provider-select";
 import { subAccountName, type PaymentMethod } from "@/lib/accounts";
+import { useLang } from "@/components/lang-provider";
+import { t as translate, type Lang } from "@/lib/i18n";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface Expense {
@@ -70,11 +72,28 @@ function categoryTone(category: string): "primary" | "good" | "warn" | "bad" | "
   return CATEGORY_TONES[category.toLowerCase()] ?? "default";
 }
 
-function paymentLabel(method: string): string {
+function categoryKey(category: string): string | null {
+  const c = category.toLowerCase();
+  if (c === "rent") return "expenses.categories.rent";
+  if (c === "electricity") return "expenses.categories.electricity";
+  if (c === "water") return "expenses.categories.water";
+  if (c === "transport") return "expenses.categories.transport";
+  if (c === "salaries" || c === "salary") return "expenses.categories.salaries";
+  if (c === "supplies") return "expenses.categories.supplies";
+  if (c === "maintenance") return "expenses.categories.maintenance";
+  if (c === "other") return "expenses.categories.other";
+  return null;
+}
+function categoryLabel(category: string, lang: Lang = "en"): string {
+  const k = categoryKey(category);
+  return k ? translate(k, lang) : category;
+}
+
+function paymentLabel(method: string, lang: Lang = "en"): string {
   const m = (method || "").toUpperCase();
-  if (m === "CASH") return "Cash";
-  if (m === "MOBILE") return "Mobile";
-  if (m === "BANK") return "Bank";
+  if (m === "CASH") return translate("sell.cash", lang);
+  if (m === "MOBILE") return translate("sell.mobile", lang);
+  if (m === "BANK") return translate("sell.bank", lang);
   return method || "—";
 }
 
@@ -89,6 +108,7 @@ async function fetchExpenses(period: PeriodKey, category: string, q: string): Pr
 // ─── View ───────────────────────────────────────────────────────────────
 export function ExpensesView() {
   const { back } = useNav();
+  const { t, lang } = useLang();
   const [period, setPeriod] = React.useState<PeriodKey>("TODAY");
   const [category, setCategory] = React.useState<string>("ALL");
   const [q, setQ] = React.useState("");
@@ -97,8 +117,8 @@ export function ExpensesView() {
   // Debounce search
   const [debouncedQ, setDebouncedQ] = React.useState(q);
   React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q), 250);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setDebouncedQ(q), 250);
+    return () => clearTimeout(tm);
   }, [q]);
 
   const { data, isLoading } = useQuery<ExpensesResp>({
@@ -115,8 +135,8 @@ export function ExpensesView() {
 
   return (
     <PageScaffold
-      title="Expenses"
-      subtitle="Money out for shop operations"
+      title={t("expenses.title")}
+      subtitle={t("expenses.subtitle")}
       onBack={() => back()}
       right={
         <Button
@@ -127,7 +147,7 @@ export function ExpensesView() {
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 5v14M5 12h14" />
           </svg>
-          Record Expense
+          {t("expenses.record")}
         </Button>
       }
     >
@@ -141,15 +161,15 @@ export function ExpensesView() {
 
       {/* Category filter */}
       <div className="mb-3 flex items-center gap-2">
-        <Label className="text-xs text-muted-foreground shrink-0">Category</Label>
+        <Label className="text-xs text-muted-foreground shrink-0">{t("expenses.category")}</Label>
         <Select value={category} onValueChange={setCategory}>
           <SelectTrigger size="sm" className="h-9 flex-1 bg-card/60">
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder={t("common.all")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All categories</SelectItem>
+            <SelectItem value="ALL">{t("common.all")}</SelectItem>
             {knownCategories.map((c) => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
+              <SelectItem key={c} value={c}>{categoryLabel(c, lang)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -158,7 +178,7 @@ export function ExpensesView() {
       <SearchInput
         value={q}
         onChange={setQ}
-        placeholder="Search category, note, user…"
+        placeholder={`${t("common.search")}…`}
         className="mb-4"
       />
 
@@ -166,16 +186,16 @@ export function ExpensesView() {
       <Card className="mb-5 overflow-hidden card-raised">
         <div className="flex items-stretch divide-x divide-border/60">
           <div className="flex-1 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Expenses</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("expenses.total")}</p>
             <p className="mt-1 text-2xl font-bold tnum text-red-400">
               <Money amount={stats?.total ?? 0} />
             </p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">{periodLabel(period)}</p>
           </div>
           <div className="w-28 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Entries</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("wastage.entries")}</p>
             <p className="mt-1 text-2xl font-bold tnum">{stats?.count ?? 0}</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">expenses</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{t("expenses.title").toLowerCase()}</p>
           </div>
         </div>
       </Card>
@@ -192,18 +212,18 @@ export function ExpensesView() {
               <path d="M7 15h4" />
             </svg>
           }
-          title="No expenses recorded yet."
-          description="Record your first shop expense to track money out for operations."
+          title={t("expenses.empty")}
+          description={t("expenses.subtitle")}
           action={
             <Button onClick={() => setRecordOpen(true)} className="bg-primary text-primary-foreground">
-              Record Expense
+              {t("expenses.record")}
             </Button>
           }
         />
       ) : (
         <div className="space-y-2.5">
           {expenses.map((e) => (
-            <ExpenseRow key={e.id} expense={e} />
+            <ExpenseRow key={e.id} expense={e} lang={lang} />
           ))}
         </div>
       )}
@@ -214,7 +234,8 @@ export function ExpensesView() {
 }
 
 // ─── Row ────────────────────────────────────────────────────────────────
-function ExpenseRow({ expense: e }: { expense: Expense }) {
+function ExpenseRow({ expense: e, lang }: { expense: Expense; lang: Lang }) {
+  const { t } = useLang();
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = React.useState(false);
   const del = useMutation({
@@ -223,12 +244,12 @@ function ExpenseRow({ expense: e }: { expense: Expense }) {
       if (!r.ok) throw new Error("failed");
     },
     onSuccess: () => {
-      toast.success("Expense deleted");
+      toast.success(t("expenses.recorded"));
       qc.invalidateQueries({ queryKey: ["expenses"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["money"] });
     },
-    onError: () => toast.error("Could not delete"),
+    onError: () => toast.error(t("saleFailed")),
   });
   return (
     <Card className="p-3 card-raised">
@@ -239,8 +260,8 @@ function ExpenseRow({ expense: e }: { expense: Expense }) {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <Pill tone={categoryTone(e.category)}>{e.category}</Pill>
-              {e.frequency === "MONTHLY" && <Pill tone="warn">Monthly</Pill>}
+              <Pill tone={categoryTone(e.category)}>{categoryLabel(e.category, lang)}</Pill>
+              {e.frequency === "MONTHLY" && <Pill tone="warn">{t("expenses.monthlyTotal")}</Pill>}
             </div>
             <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{e.note || "—"}</p>
             <p className="text-[10px] text-muted-foreground">{formatDate(e.createdAt)} · {formatTime(e.createdAt)} · {e.userName || "—"}</p>
@@ -248,16 +269,16 @@ function ExpenseRow({ expense: e }: { expense: Expense }) {
         </div>
         <div className="shrink-0 text-right">
           <p className="text-sm font-bold tnum text-red-400">−<Money amount={e.amount} /></p>
-          <Pill tone="muted" className="mt-0.5">{e.paymentDetail ? subAccountName(e.paymentMethod as PaymentMethod, e.paymentDetail) : paymentLabel(e.paymentMethod)}</Pill>
+          <Pill tone="muted" className="mt-0.5">{e.paymentDetail ? subAccountName(e.paymentMethod as PaymentMethod, e.paymentDetail) : paymentLabel(e.paymentMethod, lang)}</Pill>
         </div>
       </div>
       {confirmDel ? (
         <div className="mt-2 flex gap-2">
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmDel(false)}>Cancel</Button>
-          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => del.mutate()} disabled={del.isPending}>{del.isPending ? "Deleting…" : "Confirm Delete"}</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmDel(false)}>{t("common.cancel")}</Button>
+          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => del.mutate()} disabled={del.isPending}>{del.isPending ? t("common.loading") : `${t("common.confirm")} ${t("common.delete")}`}</Button>
         </div>
       ) : (
-        <button onClick={() => setConfirmDel(true)} className="mt-1.5 text-[10px] font-medium text-red-400/70 hover:text-red-400">Delete</button>
+        <button onClick={() => setConfirmDel(true)} className="mt-1.5 text-[10px] font-medium text-red-400/70 hover:text-red-400">{t("common.delete")}</button>
       )}
     </Card>
   );
@@ -271,6 +292,7 @@ function RecordExpenseDialog({
   onOpenChange: (o: boolean) => void;
   knownCategories: string[];
 }) {
+  const { t } = useLang();
   const qc = useQueryClient();
   const [category, setCategory] = React.useState("");
   const [amount, setAmount] = React.useState("");
@@ -308,14 +330,14 @@ function RecordExpenseDialog({
       return r.json();
     },
     onSuccess: () => {
-      toast.success("Expense recorded");
+      toast.success(t("expenses.recorded"));
       qc.invalidateQueries({ queryKey: ["expenses"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["money"] });
       reset();
       onOpenChange(false);
     },
-    onError: () => toast.error("Could not save expense"),
+    onError: () => toast.error(t("saleFailed")),
   });
 
   // merge suggested + known categories, dedupe
@@ -325,7 +347,7 @@ function RecordExpenseDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Record Expense</DialogTitle>
+          <DialogTitle>{t("expenses.record")}</DialogTitle>
         </DialogHeader>
 
         <datalist id="expense-categories">
@@ -334,11 +356,11 @@ function RecordExpenseDialog({
 
         <div className="space-y-3 py-2">
           <div>
-            <Label className="text-xs">Category</Label>
+            <Label className="text-xs">{t("expenses.category")}</Label>
             <Input
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g. Rent, Electricity, Transport…"
+              placeholder="…"
               list="expense-categories"
               className="mt-1"
               autoFocus
@@ -346,7 +368,7 @@ function RecordExpenseDialog({
           </div>
 
           <div>
-            <Label className="text-xs">Amount (Br)</Label>
+            <Label className="text-xs">{t("expenses.amount")}</Label>
             <Input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -357,7 +379,7 @@ function RecordExpenseDialog({
           </div>
 
           <div>
-            <Label className="text-xs">Payment method</Label>
+            <Label className="text-xs">{t("sell.paymentMethod")}</Label>
             <div className="mt-1 grid grid-cols-3 gap-1.5">
               {(["CASH", "MOBILE", "BANK"] as const).map((m) => (
                 <button
@@ -371,7 +393,7 @@ function RecordExpenseDialog({
                       : "bg-muted/60 text-muted-foreground",
                   )}
                 >
-                  {m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : "Bank"}
+                  {m === "CASH" ? t("sell.cash") : m === "MOBILE" ? t("sell.mobile") : t("sell.bank")}
                 </button>
               ))}
             </div>
@@ -379,7 +401,7 @@ function RecordExpenseDialog({
 
           {paymentMethod !== "CASH" && (
             <div>
-              <Label className="text-xs">{paymentMethod === "MOBILE" ? "Provider" : "Bank"}</Label>
+              <Label className="text-xs">{paymentMethod === "MOBILE" ? t("sell.provider") : t("sell.bankLabel")}</Label>
               <div className="mt-1">
                 <AccountProviderSelect method={paymentMethod} value={paymentDetail} onChange={setPaymentDetail} />
               </div>
@@ -387,45 +409,44 @@ function RecordExpenseDialog({
           )}
 
           <div>
-            <Label className="text-xs">Frequency</Label>
+            <Label className="text-xs">{t("expenses.frequency")}</Label>
             <div className="mt-1 grid grid-cols-2 gap-1.5">
               <button type="button" onClick={() => setFrequency("ONE_TIME")}
                 className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", frequency === "ONE_TIME" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-                One-time
+                {t("expenses.oneTime")}
               </button>
               <button type="button" onClick={() => setFrequency("MONTHLY")}
                 className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", frequency === "MONTHLY" ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-                Monthly (÷30 daily)
+                {t("expenses.monthly")}
               </button>
             </div>
             {frequency === "MONTHLY" && (
               <p className="mt-1 text-[10px] text-muted-foreground">
-                Monthly expense: full amount is paid now, but only 1/30 hits daily profit.
-                E.g. Br 4,000 rent = Br 133.33/day in the dashboard.
+                {t("expenses.subtitle")}
               </p>
             )}
           </div>
 
           <div>
-            <Label className="text-xs">Note (optional)</Label>
+            <Label className="text-xs">{t("expenses.note")}</Label>
             <Textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
-              placeholder="e.g. monthly electricity bill — paid via mobile"
+              placeholder="…"
               className="mt-1"
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }}>Cancel</Button>
+          <Button variant="outline" onClick={() => { reset(); onOpenChange(false); }}>{t("common.cancel")}</Button>
           <Button
             onClick={() => save.mutate()}
             disabled={save.isPending || !canSave}
             className="bg-primary text-primary-foreground"
           >
-            {save.isPending ? "Saving…" : "Save Expense"}
+            {save.isPending ? t("common.loading") : t("expenses.record")}
           </Button>
         </DialogFooter>
       </DialogContent>

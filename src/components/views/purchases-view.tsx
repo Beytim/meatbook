@@ -15,6 +15,8 @@ import { PeriodTabs, SearchInput, EmptyState, Pill, PageScaffold, ListSkeleton, 
 import { AccountProviderSelect } from "@/components/app/account-provider-select";
 import { subAccountName, type PaymentMethod } from "@/lib/accounts";
 import { ANIMAL_TYPES, animalName, animalEmoji, animalTone } from "@/lib/animals";
+import { useLang } from "@/components/lang-provider";
+import { t as translate, type Lang } from "@/lib/i18n";
 
 interface PurchaseItem {
   id?: string;
@@ -40,12 +42,17 @@ interface PurchasesResp {
   stats: { total: number; count: number; totalKg?: number };
 }
 
-function paymentLabel(m: string) {
-  return m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : m === "BANK" ? "Bank" : m === "CREDIT" ? "Credit" : m;
+function paymentLabelT(m: string, lang: Lang = "en"): string {
+  if (m === "CASH") return translate("sell.cash", lang);
+  if (m === "MOBILE") return translate("sell.mobile", lang);
+  if (m === "BANK") return translate("sell.bank", lang);
+  if (m === "CREDIT") return translate("sell.credit", lang);
+  return m;
 }
 
 export function PurchasesView() {
   const { back } = useNav();
+  const { t, lang } = useLang();
   const [period, setPeriod] = React.useState<PeriodKey>("TODAY");
   const [q, setQ] = React.useState("");
   const [recordOpen, setRecordOpen] = React.useState(false);
@@ -64,13 +71,13 @@ export function PurchasesView() {
 
   return (
     <PageScaffold
-      title="Purchases"
-      subtitle="Money out for meat & supplies"
+      title={t("purchases.title")}
+      subtitle={t("purchases.subtitle")}
       onBack={() => back()}
       right={
         <Button size="sm" onClick={() => setRecordOpen(true)} className="bg-primary text-primary-foreground">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-          Record
+          {t("purchases.record")}
         </Button>
       }
     >
@@ -80,25 +87,25 @@ export function PurchasesView() {
 
       <div className="mb-3 grid grid-cols-2 gap-2">
         <Card className="card-raised bg-card p-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("common.total")}</p>
           <p className="mt-0.5 text-base font-bold tnum text-red-400">−{formatBirr(stats?.total ?? 0)}</p>
         </Card>
         <Card className="card-raised bg-card p-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Purchases</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("purchases.title")}</p>
           <p className="mt-0.5 text-base font-bold tnum">{stats?.count ?? 0}</p>
         </Card>
       </div>
 
-      <SearchInput value={q} onChange={setQ} placeholder="Search supplier, note, animal…" className="mb-3" />
+      <SearchInput value={q} onChange={setQ} placeholder={`${t("common.search")}…`} className="mb-3" />
 
       {isLoading ? (
         <ListSkeleton rows={4} />
       ) : purchases.length === 0 ? (
         <EmptyState
           icon={<svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18 M7 10l3 3 4-5" /></svg>}
-          title="No purchases recorded yet"
-          description="Record your first meat purchase from a supplier to track money out."
-          action={<Button onClick={() => setRecordOpen(true)} className="bg-primary text-primary-foreground">Record Purchase</Button>}
+          title={t("purchases.empty")}
+          description={t("purchases.subtitle")}
+          action={<Button onClick={() => setRecordOpen(true)} className="bg-primary text-primary-foreground">{t("purchases.record")}</Button>}
         />
       ) : (
         <div className="space-y-2">
@@ -108,7 +115,7 @@ export function PurchasesView() {
             const primary = p.items.find((i) => i.animalType)?.animalType;
             return (
               <Card key={p.id} className="card-raised bg-card p-3">
-                <PurchaseRow purchase={p} kg={kg} animals={animals} primary={primary} />
+                <PurchaseRow purchase={p} kg={kg} animals={animals} primary={primary} lang={lang} />
               </Card>
             );
           })}
@@ -121,9 +128,10 @@ export function PurchasesView() {
 }
 
 // ─── Row with delete ─────────────────────────────────────────────────
-function PurchaseRow({ purchase: p, kg, animals, primary }: {
-  purchase: Purchase; kg: number; animals: string[]; primary?: string;
+function PurchaseRow({ purchase: p, kg, animals, primary, lang }: {
+  purchase: Purchase; kg: number; animals: string[]; primary?: string; lang: Lang;
 }) {
+  const { t } = useLang();
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = React.useState(false);
   const del = useMutation({
@@ -132,14 +140,14 @@ function PurchaseRow({ purchase: p, kg, animals, primary }: {
       if (!r.ok) throw new Error("failed");
     },
     onSuccess: () => {
-      toast.success("Purchase deleted");
+      toast.success(t("purchases.recorded"));
       qc.invalidateQueries({ queryKey: ["purchases"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["money"] });
       qc.invalidateQueries({ queryKey: ["suppliers"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
     },
-    onError: () => toast.error("Could not delete"),
+    onError: () => toast.error(t("saleFailed")),
   });
   return (
     <>
@@ -155,7 +163,7 @@ function PurchaseRow({ purchase: p, kg, animals, primary }: {
         </div>
         <div className="shrink-0 text-right">
           <p className="text-sm font-bold tnum text-red-400">−<Money amount={p.total} /></p>
-          <Pill tone="muted" className="mt-0.5">{p.paymentDetail ? subAccountName(p.paymentMethod as PaymentMethod, p.paymentDetail) : paymentLabel(p.paymentMethod)}</Pill>
+          <Pill tone="muted" className="mt-0.5">{p.paymentDetail ? subAccountName(p.paymentMethod as PaymentMethod, p.paymentDetail) : paymentLabelT(p.paymentMethod, lang)}</Pill>
         </div>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -164,15 +172,15 @@ function PurchaseRow({ purchase: p, kg, animals, primary }: {
             {animalEmoji(a)} {animalName(a)}
           </span>
         ))}
-        <span className="text-[10px] text-muted-foreground tnum">{p.items.length} animal{p.items.length > 1 ? "s" : ""} · <Kg kg={kg} /></span>
+        <span className="text-[10px] text-muted-foreground tnum">{p.items.length} × · <Kg kg={kg} /></span>
       </div>
       {confirmDel ? (
         <div className="mt-2 flex gap-2">
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmDel(false)}>Cancel</Button>
-          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => del.mutate()} disabled={del.isPending}>{del.isPending ? "Deleting…" : "Confirm Delete"}</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmDel(false)}>{t("common.cancel")}</Button>
+          <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => del.mutate()} disabled={del.isPending}>{del.isPending ? t("common.loading") : `${t("common.confirm")} ${t("common.delete")}`}</Button>
         </div>
       ) : (
-        <button onClick={() => setConfirmDel(true)} className="mt-1.5 text-[10px] font-medium text-red-400/70 hover:text-red-400">Delete</button>
+        <button onClick={() => setConfirmDel(true)} className="mt-1.5 text-[10px] font-medium text-red-400/70 hover:text-red-400">{t("common.delete")}</button>
       )}
     </>
   );
@@ -187,6 +195,7 @@ interface RowItem {
 }
 
 function RecordPurchaseDialog({ open, onOpenChange, period: _period }: { open: boolean; onOpenChange: (o: boolean) => void; period: PeriodKey }) {
+  const { t } = useLang();
   const qc = useQueryClient();
   const [supplier, setSupplier] = React.useState("");
   const [paymentMethod, setPaymentMethod] = React.useState<"CASH" | "MOBILE" | "BANK" | "CREDIT">("CASH");
@@ -247,7 +256,7 @@ function RecordPurchaseDialog({ open, onOpenChange, period: _period }: { open: b
       return r.json();
     },
     onSuccess: () => {
-      toast.success("Purchase recorded");
+      toast.success(t("purchases.recorded"));
       qc.invalidateQueries({ queryKey: ["purchases"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["money"] });
@@ -256,53 +265,53 @@ function RecordPurchaseDialog({ open, onOpenChange, period: _period }: { open: b
       reset();
       onOpenChange(false);
     },
-    onError: () => toast.error("Could not save purchase"),
+    onError: () => toast.error(t("saleFailed")),
   });
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Record Purchase</DialogTitle>
-          <DialogDescription className="sr-only">Record a whole-animal purchase with weight and negotiated amount.</DialogDescription>
+          <DialogTitle>{t("purchases.record")}</DialogTitle>
+          <DialogDescription className="sr-only">{t("purchases.subtitle")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
-            <Label className="text-xs">Supplier</Label>
-            <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="e.g. Kera Slaughterhouse" className="mt-1" autoFocus />
+            <Label className="text-xs">{t("purchases.supplier")}</Label>
+            <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="…" className="mt-1" autoFocus />
           </div>
           <div>
-            <Label className="text-xs">Payment method</Label>
+            <Label className="text-xs">{t("sell.paymentMethod")}</Label>
             <div className="mt-1 grid grid-cols-4 gap-1.5">
               {(["CASH", "MOBILE", "BANK", "CREDIT"] as const).map((m) => (
                 <button key={m} type="button" onClick={() => { setPaymentMethod(m); setPaymentDetail(""); if (m === "CREDIT") fetchSuppliers(); }}
                   className={cn("rounded-lg py-2 text-xs font-semibold tap-scale", paymentMethod === m ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}>
-                  {m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : m === "BANK" ? "Bank" : "Credit"}
+                  {m === "CASH" ? t("sell.cash") : m === "MOBILE" ? t("sell.mobile") : m === "BANK" ? t("sell.bank") : t("sell.credit")}
                 </button>
               ))}
             </div>
           </div>
           {paymentMethod !== "CASH" && paymentMethod !== "CREDIT" && (
             <div>
-              <Label className="text-xs">{paymentMethod === "MOBILE" ? "Provider" : "Bank"}</Label>
+              <Label className="text-xs">{paymentMethod === "MOBILE" ? t("sell.provider") : t("sell.bankLabel")}</Label>
               <div className="mt-1"><AccountProviderSelect method={paymentMethod} value={paymentDetail} onChange={setPaymentDetail} /></div>
             </div>
           )}
           {paymentMethod === "CREDIT" && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">Buy on Credit — adds to supplier ledger</p>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">{t("purchases.onCredit")}</p>
               {suppliers.length > 0 && (
                 <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}
                   className="mb-1.5 h-8 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-xs">
-                  <option value="">— Select existing supplier —</option>
+                  <option value="">{t("purchases.selectSupplier")}</option>
                   {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               )}
-              <p className="text-[10px] text-muted-foreground">Supplier name above will be used if no existing supplier selected.</p>
+              <p className="text-[10px] text-muted-foreground">{t("purchases.newSupplier")}</p>
             </div>
           )}
           <div>
-            <Label className="text-xs">Animals purchased</Label>
+            <Label className="text-xs">{t("purchases.animals")}</Label>
             <div className="mt-1.5 space-y-2">
               {rows.map((r, idx) => {
                 const c = computed.find((x) => x.key === r.key)!;
@@ -326,12 +335,12 @@ function RecordPurchaseDialog({ open, onOpenChange, period: _period }: { open: b
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <div>
-                        <Label className="text-[10px] text-muted-foreground">Weight (kg)</Label>
-                        <Input value={r.kg} onChange={(e) => updateRow(r.key, { kg: e.target.value })} inputMode="decimal" placeholder="e.g. 180" className="h-9 tnum text-sm" />
+                        <Label className="text-[10px] text-muted-foreground">{t("purchases.weight")}</Label>
+                        <Input value={r.kg} onChange={(e) => updateRow(r.key, { kg: e.target.value })} inputMode="decimal" placeholder="180" className="h-9 tnum text-sm" />
                       </div>
                       <div>
-                        <Label className="text-[10px] text-muted-foreground">Amount (Br)</Label>
-                        <Input value={r.amount} onChange={(e) => updateRow(r.key, { amount: e.target.value })} inputMode="decimal" placeholder="e.g. 54000" className="h-9 tnum text-sm" />
+                        <Label className="text-[10px] text-muted-foreground">{t("purchases.amount")}</Label>
+                        <Input value={r.amount} onChange={(e) => updateRow(r.key, { amount: e.target.value })} inputMode="decimal" placeholder="54000" className="h-9 tnum text-sm" />
                       </div>
                     </div>
                     {c.perKg > 0 && (
@@ -344,22 +353,22 @@ function RecordPurchaseDialog({ open, onOpenChange, period: _period }: { open: b
             <button type="button" onClick={() => setRows((rs) => [...rs, { key: String(rs.length + 1), animalType: "OX", kg: "", amount: "" }])}
               className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border/70 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:text-primary tap-scale">
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-              Add animal
+              {t("purchases.addAnimal")}
             </button>
           </div>
           <div>
-            <Label className="text-xs">Note (optional)</Label>
+            <Label className="text-xs">{t("purchases.note")}</Label>
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="mt-1" />
           </div>
           <div className="flex items-center justify-between rounded-xl bg-primary/10 px-3 py-2 ring-1 ring-primary/20">
-            <span className="text-sm font-semibold">Grand total</span>
+            <span className="text-sm font-semibold">{t("purchases.grandTotal")}</span>
             <span className="text-base font-bold tnum">{formatBirr(grandTotal)}</span>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
           <Button onClick={() => save.mutate()} disabled={save.isPending || !canSave} className="bg-primary text-primary-foreground">
-            {save.isPending ? "Saving…" : "Save"}
+            {save.isPending ? t("common.loading") : t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

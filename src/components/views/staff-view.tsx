@@ -22,6 +22,7 @@ import {
 import {
   PageScaffold, StatTile, EmptyState, Pill, ListSkeleton, SectionHeader,
 } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 type Role = "OWNER" | "MANAGER" | "CASHIER";
@@ -38,11 +39,14 @@ interface StaffMember {
 interface StaffResp { staff: StaffMember[] }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
-const ROLE_LABEL: Record<Role, string> = {
-  OWNER: "Owner",
-  MANAGER: "Manager",
-  CASHIER: "Cashier",
-};
+function useRoleLabel(): Record<Role, string> {
+  const { t } = useLang();
+  return {
+    OWNER: t("staff.owner"),
+    MANAGER: t("staff.manager"),
+    CASHIER: t("staff.cashier"),
+  };
+}
 const ROLE_TONE: Record<Role, "primary" | "warn" | "muted"> = {
   OWNER: "primary",
   MANAGER: "warn",
@@ -69,6 +73,8 @@ const PERMISSIONS: { label: string; owner: boolean; manager: boolean; cashier: b
 // ─── View ───────────────────────────────────────────────────────────────
 export function StaffView() {
   const { back } = useNav();
+  const { t } = useLang();
+  const roleLabel = useRoleLabel();
   const qc = useQueryClient();
   const [editing, setEditing] = React.useState<StaffMember | null>(null);
   const [adding, setAdding] = React.useState(false);
@@ -96,8 +102,8 @@ export function StaffView() {
 
   return (
     <PageScaffold
-      title="Staff"
-      subtitle="Roles, PINs & access"
+      title={t("staff.title")}
+      subtitle={t("staff.subtitle")}
       onBack={() => back()}
       right={
         <Button
@@ -108,20 +114,20 @@ export function StaffView() {
           <svg viewBox="0 0 24 24" className="mr-1 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" />
           </svg>
-          Add Staff
+          {t("staff.add")}
         </Button>
       }
     >
       {/* Top stat tiles */}
       <div className="mb-5 grid grid-cols-3 gap-2.5">
-        <StatTile label="Total Staff" value={<span className="tnum">{totalStaff}</span>} tone="default" />
-        <StatTile label="Active" value={<span className="tnum">{activeCount}</span>} sub="working now" tone="good" />
-        <StatTile label="Owners" value={<span className="tnum">{ownerCount}</span>} tone="primary" />
+        <StatTile label={t("staff.totalStaff")} value={<span className="tnum">{totalStaff}</span>} tone="default" />
+        <StatTile label={t("staff.active")} value={<span className="tnum">{activeCount}</span>} sub={t("staff.active").toLowerCase()} tone="good" />
+        <StatTile label={t("staff.owner")} value={<span className="tnum">{ownerCount}</span>} tone="primary" />
       </div>
 
       {/* Staff list */}
       <div className="mb-3">
-        <SectionHeader title={`All Staff (${totalStaff})`} subtitle="Tap a member to edit their role, PIN, or status" />
+        <SectionHeader title={`${t("staff.title")} (${totalStaff})`} subtitle={t("staff.subtitle")} />
       </div>
 
       {isLoading ? (
@@ -133,28 +139,28 @@ export function StaffView() {
               <circle cx="9" cy="7" r="4" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /><path d="M16 11h6M19 8v6" />
             </svg>
           }
-          title="No staff yet."
-          description="Add your first team member to start tracking who does what."
-          action={<Button onClick={() => setAdding(true)} className="bg-primary text-primary-foreground">Add Staff</Button>}
+          title={t("staff.empty")}
+          description={t("staff.subtitle")}
+          action={<Button onClick={() => setAdding(true)} className="bg-primary text-primary-foreground">{t("staff.add")}</Button>}
         />
       ) : (
         <div className="space-y-2.5">
           {staff.map((m) => (
-            <StaffCard key={m.id} member={m} onEdit={() => setEditing(m)} />
+            <StaffCard key={m.id} member={m} onEdit={() => setEditing(m)} roleLabel={roleLabel} />
           ))}
         </div>
       )}
 
       {/* Role permissions matrix */}
       <div className="mt-6">
-        <SectionHeader title="Role Permissions" subtitle="What each role can do in MeatBook" />
+        <SectionHeader title={t("staff.rolePermissions")} subtitle={t("staff.subtitle")} />
       </div>
       <Card className="mt-2 overflow-hidden card-raised">
         <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 border-b border-border/60 bg-muted/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          <span>Capability</span>
-          <span className="w-14 text-center">Owner</span>
-          <span className="w-14 text-center">Manager</span>
-          <span className="w-14 text-center">Cashier</span>
+          <span>{t("staff.role")}</span>
+          <span className="w-14 text-center">{t("staff.owner")}</span>
+          <span className="w-14 text-center">{t("staff.manager")}</span>
+          <span className="w-14 text-center">{t("staff.cashier")}</span>
         </div>
         {PERMISSIONS.map((p, i) => (
           <div
@@ -177,19 +183,22 @@ export function StaffView() {
         open={adding}
         onClose={() => setAdding(false)}
         onSuccess={invalidateAll}
+        roleLabel={roleLabel}
       />
       <StaffDialog
         open={!!editing}
         member={editing ?? undefined}
         onClose={() => setEditing(null)}
         onSuccess={invalidateAll}
+        roleLabel={roleLabel}
       />
     </PageScaffold>
   );
 }
 
 // ─── Staff card ─────────────────────────────────────────────────────────
-function StaffCard({ member, onEdit }: { member: StaffMember; onEdit: () => void }) {
+function StaffCard({ member, onEdit, roleLabel }: { member: StaffMember; onEdit: () => void; roleLabel: Record<Role, string> }) {
+  const { t } = useLang();
   const initialsStr = initials(member.name) || "?";
   const isYou = member.name.trim().toLowerCase() === CURRENT_USER.toLowerCase();
   const role = member.role as Role;
@@ -207,19 +216,18 @@ function StaffCard({ member, onEdit }: { member: StaffMember; onEdit: () => void
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-sm font-semibold">{member.name}</p>
-          <Pill tone={ROLE_TONE[role]}>{ROLE_LABEL[role]}</Pill>
+          <Pill tone={ROLE_TONE[role]}>{roleLabel[role]}</Pill>
           {isYou && (
-            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">You</span>
+            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">{t("login.signIn")}</span>
           )}
-          {!member.active && <Pill tone="muted">Inactive</Pill>}
+          {!member.active && <Pill tone="muted">{t("staff.inactive")}</Pill>}
         </div>
         <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-          Joined {formatDate(member.joinedAt)}
-          {member.pin ? " · PIN set" : " · no PIN"}
+          {t("staff.pin")}: {member.pin ? "✓" : "—"}
         </p>
       </div>
       <Button variant="outline" size="sm" onClick={onEdit} className="shrink-0 tap-scale">
-        Edit
+        {t("common.edit")}
       </Button>
     </Card>
   );
@@ -249,12 +257,15 @@ function StaffDialog({
   member,
   onClose,
   onSuccess,
+  roleLabel,
 }: {
   open: boolean;
   member?: StaffMember;
   onClose: () => void;
   onSuccess: () => void;
+  roleLabel: Record<Role, string>;
 }) {
+  const { t } = useLang();
   const isEdit = !!member;
   const [name, setName] = React.useState("");
   const [role, setRole] = React.useState<Role>("CASHIER");
@@ -308,11 +319,11 @@ function StaffDialog({
       return r.json();
     },
     onSuccess: () => {
-      toast.success(isEdit ? "Staff updated" : `${name.trim()} added as ${ROLE_LABEL[role]}`);
+      toast.success(isEdit ? t("staff.added") : `${name.trim()} → ${roleLabel[role]}`);
       onSuccess();
       onClose();
     },
-    onError: (err: Error) => toast.error(err.message || "Failed"),
+    onError: (err: Error) => toast.error(err.message || t("saleFailed")),
   });
 
   const deleteMutation = useMutation({
@@ -326,11 +337,11 @@ function StaffDialog({
       return r.json();
     },
     onSuccess: () => {
-      toast.success(`${member?.name ?? "Staff"} removed`);
+      toast.success(`${member?.name ?? t("staff.title")} ✓`);
       onSuccess();
       onClose();
     },
-    onError: (err: Error) => toast.error(err.message || "Failed"),
+    onError: (err: Error) => toast.error(err.message || t("saleFailed")),
   });
 
   const pinValid = pin === "" || /^\d{4}$/.test(pin.trim());
@@ -340,35 +351,33 @@ function StaffDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Staff" : "Add Staff"}</DialogTitle>
+          <DialogTitle>{isEdit ? t("common.edit") : t("staff.add")}</DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? "Update role, PIN, or active status."
-              : "Create a new team member with a role and optional PIN."}
+            {t("staff.subtitle")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="staff-name" className="text-xs text-muted-foreground">Name</Label>
+            <Label htmlFor="staff-name" className="text-xs text-muted-foreground">{t("staff.name")}</Label>
             <Input
               id="staff-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Full name"
+              placeholder="…"
               autoFocus
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Role</Label>
+            <Label className="text-xs text-muted-foreground">{t("staff.role")}</Label>
             <Select value={role} onValueChange={(v) => setRole(v as Role)}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Pick a role" />
+                <SelectValue placeholder={t("staff.role")} />
               </SelectTrigger>
               <SelectContent>
-                {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
-                  <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
+                {(Object.keys(roleLabel) as Role[]).map((r) => (
+                  <SelectItem key={r} value={r}>{roleLabel[r]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -376,18 +385,18 @@ function StaffDialog({
 
           <div className="space-y-2">
             <Label htmlFor="staff-pin" className="text-xs text-muted-foreground">
-              PIN <span className="opacity-70">(4 digits, optional)</span>
+              {t("staff.pin")} <span className="opacity-70">(4)</span>
             </Label>
             <Input
               id="staff-pin"
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
               inputMode="numeric"
-              placeholder="e.g. 1234"
+              placeholder="1234"
               className="tnum"
             />
             {!pinValid && (
-              <p className="text-[11px] text-red-400">PIN must be exactly 4 digits.</p>
+              <p className="text-[11px] text-red-400">{t("onboard.pin")}</p>
             )}
           </div>
 
@@ -396,8 +405,8 @@ function StaffDialog({
               <Separator />
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium">Active</p>
-                  <p className="text-[11px] text-muted-foreground">Inactive members can't sign in.</p>
+                  <p className="text-sm font-medium">{t("staff.active")}</p>
+                  <p className="text-[11px] text-muted-foreground">{t("staff.inactive")}</p>
                 </div>
                 <Switch checked={active} onCheckedChange={setActive} />
               </div>
@@ -411,14 +420,14 @@ function StaffDialog({
               {confirmDelete ? (
                 <>
                   <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={deleteMutation.isPending}>
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                   <Button
                     onClick={() => deleteMutation.mutate()}
                     disabled={deleteMutation.isPending}
                     className="bg-red-500 text-white hover:bg-red-600"
                   >
-                    {deleteMutation.isPending ? "Deleting…" : "Confirm delete"}
+                    {deleteMutation.isPending ? t("common.loading") : `${t("common.confirm")} ${t("common.delete")}`}
                   </Button>
                 </>
               ) : (
@@ -430,15 +439,15 @@ function StaffDialog({
                   <svg viewBox="0 0 24 24" className="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                   </svg>
-                  Delete
+                  {t("common.delete")}
                 </Button>
               )}
             </div>
           ) : null}
           <div className="order-1 flex gap-2 sm:order-2 sm:ml-auto">
-            <Button variant="outline" onClick={onClose} disabled={saveMutation.isPending}>Cancel</Button>
+            <Button variant="outline" onClick={onClose} disabled={saveMutation.isPending}>{t("common.cancel")}</Button>
             <Button onClick={() => saveMutation.mutate()} disabled={!canSave} className="bg-primary text-primary-foreground">
-              {saveMutation.isPending ? "Saving…" : isEdit ? "Save changes" : "Add staff"}
+              {saveMutation.isPending ? t("common.loading") : isEdit ? t("common.save") : t("staff.add")}
             </Button>
           </div>
         </DialogFooter>

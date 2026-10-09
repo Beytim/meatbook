@@ -11,6 +11,7 @@ import { AccountProviderSelect } from "@/components/app/account-provider-select"
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter,
 } from "@/components/ui/drawer";
+import { useLang } from "@/components/lang-provider";
 
 interface Product {
   id: string;
@@ -41,6 +42,7 @@ async function fetchProducts(): Promise<{ products: Product[] }> {
 export function SellView() {
   const qc = useQueryClient();
   const go = useNav((s) => s.go);
+  const { t } = useLang();
   const { data, isLoading } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
   const [saleType, setSaleType] = React.useState<SaleType>("TAKE_HOME");
   const [payment, setPayment] = React.useState<PaymentMethod>("CASH");
@@ -163,9 +165,9 @@ export function SellView() {
       qc.invalidateQueries({ queryKey: ["reports"] });
       qc.invalidateQueries({ queryKey: ["audit"] });
       qc.invalidateQueries({ queryKey: ["debts"] });
-      toast.success(`Sale #${data.sale.number} complete`);
+      toast.success(`${t("saleComplete")} #${data.sale.number}`);
     },
-    onError: () => toast.error("Could not complete sale"),
+    onError: () => toast.error(t("saleFailed")),
   });
 
   // Shared cart content (used in both desktop side panel and mobile drawer)
@@ -174,7 +176,7 @@ export function SellView() {
       {/* Items list */}
       <div className="mb-scroll max-h-[30vh] overflow-y-auto px-2 py-2">
         {cart.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Cart is empty. Tap a product to add.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t("sell.emptyCart")}</p>
         ) : (
           <div className="divide-y divide-border/40">
             {cart.map((i) => (
@@ -203,7 +205,7 @@ export function SellView() {
         <div className="border-t border-border/60 bg-card/80 p-3 space-y-2">
           {/* Discount */}
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground">Discount</span>
+            <span className="text-[11px] text-muted-foreground">{t("sell.discount")}</span>
             <input
               value={discount}
               onChange={(e) => setDiscount(e.target.value)}
@@ -216,11 +218,11 @@ export function SellView() {
 
           {/* Subtotal + Total */}
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Subtotal</span>
+            <span className="text-[11px] text-muted-foreground">{t("sell.subtotal")}</span>
             <span className="text-sm tnum text-muted-foreground">{formatBirr(subtotal)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Total</span>
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("sell.total")}</span>
             <span className="text-xl font-bold tnum text-primary">{formatBirr(total)}</span>
           </div>
 
@@ -232,7 +234,7 @@ export function SellView() {
                 onClick={() => { setPayment(m); setPaymentDetail(""); if (m === "CREDIT") fetchCustomers(); }}
                 className={cn("rounded-lg py-2 text-[11px] font-semibold tap-scale", payment === m ? "bg-primary text-primary-foreground" : "bg-muted/60 text-muted-foreground")}
               >
-                {m === "CASH" ? "Cash" : m === "MOBILE" ? "Mobile" : m === "BANK" ? "Bank" : "Credit"}
+                {m === "CASH" ? t("sell.cash") : m === "MOBILE" ? t("sell.mobile") : m === "BANK" ? t("sell.bank") : t("sell.credit")}
               </button>
             ))}
           </div>
@@ -240,7 +242,7 @@ export function SellView() {
           {/* Bank/Mobile provider dropdown */}
           {payment !== "CASH" && payment !== "CREDIT" && (
             <div className="relative z-50">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{payment === "MOBILE" ? "Provider" : "Bank"}</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{payment === "MOBILE" ? t("sell.provider") : t("sell.bankLabel")}</p>
               <AccountProviderSelect method={payment} value={paymentDetail} onChange={setPaymentDetail} />
             </div>
           )}
@@ -248,7 +250,7 @@ export function SellView() {
           {/* Cash received + change calculator */}
           {payment === "CASH" && (
             <div>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Cash Received</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("sell.cashReceived")}</p>
               <input
                 value={cashReceived}
                 onChange={(e) => setCashReceived(e.target.value)}
@@ -258,9 +260,9 @@ export function SellView() {
               />
               {cashReceivedNum > 0 && (
                 <div className="mt-1.5 flex items-center justify-between rounded-lg bg-emerald-500/5 px-3 py-2">
-                  <span className="text-[11px] text-muted-foreground">Change</span>
+                  <span className="text-[11px] text-muted-foreground">{t("sell.change")}</span>
                   <span className={cn("text-base font-bold tnum", change >= 0 ? "text-emerald-400" : "text-red-400")}>
-                    {change >= 0 ? formatBirr(change) : `Short ${formatBirr(total - cashReceivedNum)}`}
+                    {change >= 0 ? formatBirr(change) : `${t("sell.short")} ${formatBirr(total - cashReceivedNum)}`}
                   </span>
                 </div>
               )}
@@ -270,26 +272,26 @@ export function SellView() {
           {/* Credit customer selector */}
           {payment === "CREDIT" && (
             <div>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Customer (Credit)</p>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("sell.customerCredit")}</p>
               {customers.length > 0 && (
                 <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mb-1.5 h-9 w-full rounded-lg border border-border/60 bg-background/60 px-2 text-sm">
-                  <option value="">— Select existing customer —</option>
+                  <option value="">{t("sell.selectExisting")}</option>
                   {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               )}
-              <input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="…or type new customer name" className="h-9 w-full rounded-lg border border-border/60 bg-background/60 px-3 text-sm" />
+              <input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder={t("sell.newCustomer")} className="h-9 w-full rounded-lg border border-border/60 bg-background/60 px-3 text-sm" />
             </div>
           )}
 
           {/* Checkout buttons */}
           <div className="flex gap-2">
-            <button onClick={() => { setCart([]); setDiscount(""); setCashReceived(""); }} className="rounded-xl bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-400 tap-scale">Clear</button>
+            <button onClick={() => { setCart([]); setDiscount(""); setCashReceived(""); }} className="rounded-xl bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-400 tap-scale">{t("sell.clear")}</button>
             <button
               onClick={() => checkout.mutate()}
               disabled={checkout.isPending || cart.length === 0 || (payment !== "CASH" && payment !== "CREDIT" && !paymentDetail) || (payment === "CREDIT" && !customerId && !newCustomerName.trim())}
               className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-wide text-primary-foreground meat-glow disabled:opacity-50 tap-scale"
             >
-              {checkout.isPending ? "Processing…" : `Complete — ${formatBirr(total)}`}
+              {checkout.isPending ? t("sell.processing") : `${t("sell.complete")} — ${formatBirr(total)}`}
             </button>
           </div>
         </div>
@@ -310,7 +312,7 @@ export function SellView() {
             >
               <div className="flex items-center gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-500/20 text-amber-400 text-xs font-bold">OUT</span>
-                <div><p className="text-sm font-bold">Take Home</p><p className="text-[10px] text-muted-foreground">Packed to go</p></div>
+                <div><p className="text-sm font-bold">{t("sell.takeHome")}</p><p className="text-[10px] text-muted-foreground">{t("sell.packedToGo")}</p></div>
               </div>
             </button>
             <button
@@ -319,7 +321,7 @@ export function SellView() {
             >
               <div className="flex items-center gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-bold">IN</span>
-                <div><p className="text-sm font-bold">Eat Here</p><p className="text-[10px] text-muted-foreground">Served on plate</p></div>
+                <div><p className="text-sm font-bold">{t("sell.eatHere")}</p><p className="text-[10px] text-muted-foreground">{t("sell.dineIn")}</p></div>
               </div>
             </button>
           </div>
@@ -327,7 +329,7 @@ export function SellView() {
           {/* Search */}
           <div className="relative mb-3">
             <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search meat…" className="h-10 w-full rounded-xl border border-border/70 bg-card/60 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("sell.searchMeat")} className="h-10 w-full rounded-xl border border-border/70 bg-card/60 pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20" />
           </div>
 
           {/* Product grid */}
@@ -354,11 +356,11 @@ export function SellView() {
                     </div>
                     <p className="mt-2 text-sm font-bold text-foreground">{p.name}</p>
                     <p className="text-sm font-bold tnum text-primary">{formatBirr(price)} <span className="text-[10px] font-normal text-muted-foreground">/kg</span></p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">{cartInCart(p.id) ? "In cart — tap to add more" : "Tap to add 0.5 kg"}</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{cartInCart(p.id) ? t("sell.tapToAddMore") : t("sell.tapToAdd")}</p>
                   </button>
                 );
               })}
-              {filtered.length === 0 && <div className="col-span-full py-10 text-center text-sm text-muted-foreground">No products match.</div>}
+              {filtered.length === 0 && <div className="col-span-full py-10 text-center text-sm text-muted-foreground">{t("sell.noMatch")}</div>}
             </div>
           )}
         </div>
@@ -368,10 +370,10 @@ export function SellView() {
           <Card className="card-raised bg-card flex h-[calc(100vh-180px)] flex-col overflow-hidden">
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
               <span className="flex items-center gap-2">
-                <Pill tone={saleType === "TAKE_HOME" ? "warn" : "good"}>{saleType === "TAKE_HOME" ? "Take Home" : "Eat Here"}</Pill>
-                <span className="text-sm font-bold">Current Sale</span>
+                <Pill tone={saleType === "TAKE_HOME" ? "warn" : "good"}>{saleType === "TAKE_HOME" ? t("sell.takeHome") : t("sell.eatHere")}</Pill>
+                <span className="text-sm font-bold">{t("home.currentSale")}</span>
               </span>
-              <span className="text-xs text-muted-foreground tnum">{cart.length} item{cart.length > 1 ? "s" : ""} · {totalKg.toFixed(2)} kg</span>
+              <span className="text-xs text-muted-foreground tnum">{cart.length} {cart.length > 1 ? t("common.items") : t("common.item")} · {totalKg.toFixed(2)} kg</span>
             </div>
             {cartContent}
           </Card>
@@ -383,7 +385,7 @@ export function SellView() {
         <button
           onClick={() => setCartOpen(true)}
           className={cn("fixed bottom-[88px] right-4 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl meat-glow tap-scale transition-transform lg:hidden", fabPulse && "scale-110")}
-          aria-label="Open cart"
+          aria-label={t("sell.openCart")}
         >
           <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="9" cy="21" r="1.6" /><circle cx="18" cy="21" r="1.6" /><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6" />
@@ -399,10 +401,10 @@ export function SellView() {
           <DrawerHeader className="border-b border-border/60 px-4 pb-3">
             <DrawerTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <Pill tone={saleType === "TAKE_HOME" ? "warn" : "good"}>{saleType === "TAKE_HOME" ? "Take Home" : "Eat Here"}</Pill>
-                <span className="text-sm font-bold">Current Sale</span>
+                <Pill tone={saleType === "TAKE_HOME" ? "warn" : "good"}>{saleType === "TAKE_HOME" ? t("sell.takeHome") : t("sell.eatHere")}</Pill>
+                <span className="text-sm font-bold">{t("home.currentSale")}</span>
               </span>
-              <span className="text-xs text-muted-foreground tnum">{cart.length} item{cart.length > 1 ? "s" : ""} · {totalKg.toFixed(2)} kg</span>
+              <span className="text-xs text-muted-foreground tnum">{cart.length} {cart.length > 1 ? t("common.items") : t("common.item")} · {totalKg.toFixed(2)} kg</span>
             </DrawerTitle>
           </DrawerHeader>
           <div className="mb-scroll flex max-h-[calc(92vh-60px)] flex-col overflow-y-auto">
@@ -420,14 +422,14 @@ export function SellView() {
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
               </div>
               <div className="flex-1">
-                <p className="text-sm font-bold">Sale #{lastSale.number} complete</p>
-                <p className="text-[11px] text-muted-foreground">{formatBirr(lastSale.total)} received</p>
+                <p className="text-sm font-bold">{t("saleComplete")} #{lastSale.number}</p>
+                <p className="text-[11px] text-muted-foreground">{formatBirr(lastSale.total)} {t("sell.received")}</p>
               </div>
               <button onClick={() => setLastSale(null)} className="rounded-lg p-1 text-muted-foreground hover:bg-muted">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             </div>
-            <button onClick={() => go("RECEIPTS")} className="mt-2 w-full rounded-lg bg-emerald-500/20 py-1.5 text-[11px] font-semibold text-emerald-300">View receipt</button>
+            <button onClick={() => go("RECEIPTS")} className="mt-2 w-full rounded-lg bg-emerald-500/20 py-1.5 text-[11px] font-semibold text-emerald-300">{t("sell.viewReceipt")}</button>
           </Card>
         </div>
       )}

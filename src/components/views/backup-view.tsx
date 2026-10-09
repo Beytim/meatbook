@@ -18,6 +18,7 @@ import {
 import {
   PageScaffold, StatTile, EmptyState, Pill, ListSkeleton, SectionHeader,
 } from "@/components/app/primitives";
+import { useLang } from "@/components/lang-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface BackupRecord {
@@ -45,6 +46,7 @@ const QUOTA = 10 * 1024 * 1024 * 1024;
 export function BackupView() {
   const { back, go } = useNav();
   const qc = useQueryClient();
+  const { t } = useLang();
 
   const { data, isLoading } = useQuery<BackupResp>({
     queryKey: ["backups"],
@@ -196,8 +198,8 @@ export function BackupView() {
 
   return (
     <PageScaffold
-      title="Backup & Restore"
-      subtitle="Protect your MeatBook data"
+      title={t("backup.title")}
+      subtitle={t("backup.subtitle")}
       onBack={() => back()}
     >
       {/* Hero backup button */}
@@ -209,7 +211,7 @@ export function BackupView() {
             </svg>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-base font-semibold">Backup Now</p>
+            <p className="text-base font-semibold">{t("backup.now")}</p>
             <p className="text-xs text-muted-foreground">
               Snapshot your current database into a recoverable backup.
             </p>
@@ -219,7 +221,7 @@ export function BackupView() {
             disabled={snapshotMut.isPending}
             className="bg-primary text-primary-foreground meat-glow shrink-0 tap-scale"
           >
-            {snapshotMut.isPending ? "Working…" : "Backup Now"}
+            {snapshotMut.isPending ? "Working…" : t("backup.now")}
           </Button>
         </div>
       </Card>
@@ -227,17 +229,17 @@ export function BackupView() {
       {/* Status tiles */}
       <div className="mb-5 grid grid-cols-2 gap-2.5">
         <StatTile
-          label="Database Size"
+          label={t("backup.databaseSize")}
           value={<span className="tnum">{formatBytes(dbSize)}</span>}
           sub="SQLite file"
         />
         <StatTile
-          label="Last Backup"
+          label={t("backup.lastBackup")}
           value={lastBackup ? <span className="tnum">{relativeDay(lastBackup.createdAt)}</span> : "—"}
           sub={lastBackup ? formatDateTime(lastBackup.createdAt) : "Never"}
         />
         <StatTile
-          label="Backup Status"
+          label={t("backup.status")}
           value={isCritical ? "Critical" : "Healthy"}
           sub={isCritical ? "No recent backup" : "Up to date"}
           tone={isCritical ? "bad" : "good"}
@@ -252,7 +254,7 @@ export function BackupView() {
 
       {/* Quick actions */}
       <div className="mb-3">
-        <SectionHeader title="Quick Actions" subtitle="Snapshot, export, or restore your data" />
+        <SectionHeader title={t("home.quickActions")} subtitle="Snapshot, export, or restore your data" />
       </div>
       <div className="mb-5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
         <ActionCard
@@ -262,8 +264,8 @@ export function BackupView() {
               <path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6" /><path d="m7 9 5-5 5 5" /><path d="M12 4v12" />
             </svg>
           }
-          title="Backup Now"
-          description="Snapshot current DB"
+          title={t("backup.now")}
+          description={t("backup.snapshotDesc")}
           onClick={() => snapshotMut.mutate()}
           disabled={snapshotMut.isPending}
           loading={snapshotMut.isPending}
@@ -275,8 +277,8 @@ export function BackupView() {
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" />
             </svg>
           }
-          title="Export Backup"
-          description="Download .mbk file"
+          title={t("backup.export")}
+          description={t("backup.exportDesc")}
           onClick={() => exportMut.mutate()}
           disabled={exportMut.isPending}
           loading={exportMut.isPending}
@@ -288,8 +290,8 @@ export function BackupView() {
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" />
             </svg>
           }
-          title="Import Backup"
-          description="Restore from .mbk"
+          title={t("backup.import")}
+          description={t("backup.importDesc")}
           onClick={() => fileInputRef.current?.click()}
         />
       </div>
@@ -309,7 +311,7 @@ export function BackupView() {
           </svg>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Automatic daily backup</p>
+          <p className="text-sm font-semibold">{t("backup.autoDaily")}</p>
           <p className="text-xs text-muted-foreground">
             Create a snapshot every day when the app opens.
           </p>
@@ -324,7 +326,7 @@ export function BackupView() {
       {/* Backup History */}
       <div className="mb-3">
         <SectionHeader
-          title="Backup History"
+          title={t("backup.history")}
           subtitle={backups.length > 0 ? `${backups.length} snapshot${backups.length === 1 ? "" : "s"}` : undefined}
           action={
             backups.length > 0 ? (

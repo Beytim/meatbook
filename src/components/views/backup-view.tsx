@@ -27,10 +27,15 @@ interface BackupRecord {
   note: string | null;
   createdAt: string;
 }
+interface RecordCounts {
+  total: number;
+  [key: string]: number;
+}
 interface BackupResp {
   backups: BackupRecord[];
   dbSize: number;
   lastBackup: BackupRecord | null;
+  recordCounts?: RecordCounts;
 }
 interface SettingsResp {
   settings: {
@@ -38,9 +43,6 @@ interface SettingsResp {
     shopName: string;
   };
 }
-
-// 10 GB quota — mirrors /api/meat/device
-const QUOTA = 10 * 1024 * 1024 * 1024;
 
 // ─── View ───────────────────────────────────────────────────────────────
 export function BackupView() {
@@ -71,12 +73,12 @@ export function BackupView() {
   const backups = data?.backups ?? [];
   const lastBackup = data?.lastBackup ?? null;
   const autoBackup = settingsData?.settings.autoBackup ?? false;
+  const recordCounts = data?.recordCounts;
 
   // health: critical if no backup in over 7 days (or never)
   const sevenDaysAgo = Date.now() - 7 * 86400000;
   const lastTs = lastBackup ? new Date(lastBackup.createdAt).getTime() : 0;
   const isCritical = !lastBackup || lastTs < sevenDaysAgo;
-  const freeSpace = Math.max(0, QUOTA - dbSize);
 
   const invalidateAll = React.useCallback(() => {
     qc.invalidateQueries({ queryKey: ["backups"] });
@@ -245,10 +247,10 @@ export function BackupView() {
           tone={isCritical ? "bad" : "good"}
         />
         <StatTile
-          label="Available Storage"
-          value={<span className="tnum">{formatBytes(freeSpace)} / {formatBytes(QUOTA)}</span>}
-          sub="Storage is healthy"
-          tone="good"
+          label={t("audit.totalEvents")}
+          value={<span className="tnum">{recordCounts?.total ?? 0}</span>}
+          sub="across all tables"
+          tone="primary"
         />
       </div>
 

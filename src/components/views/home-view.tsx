@@ -116,7 +116,7 @@ export function HomeView() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("home.takeHome")}</p>
             </div>
             <p className="mt-1 text-base font-bold tnum">{formatBirr(today.takeHome.revenue, cur)}</p>
-            <p className="text-[11px] text-muted-foreground tnum">{today.takeHome.count} {t("salesHistory.sales").toLowerCase()} · {formatKg(today.takeHome.kg)}</p>
+            <p className="text-[11px] text-muted-foreground tnum">{today.takeHome.count} {today.takeHome.count === 1 ? t("home.sales") : t("salesHistory.salesPlural")} · {formatKg(today.takeHome.kg)}</p>
           </div>
           <div className="px-4 py-3">
             <div className="flex items-center gap-2">
@@ -124,7 +124,7 @@ export function HomeView() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("home.eatHere")}</p>
             </div>
             <p className="mt-1 text-base font-bold tnum">{formatBirr(today.eatHere.revenue, cur)}</p>
-            <p className="text-[11px] text-muted-foreground tnum">{today.eatHere.count} {t("salesHistory.sales").toLowerCase()} · {formatKg(today.eatHere.kg)}</p>
+            <p className="text-[11px] text-muted-foreground tnum">{today.eatHere.count} {today.eatHere.count === 1 ? t("home.sales") : t("salesHistory.salesPlural")} · {formatKg(today.eatHere.kg)}</p>
           </div>
         </div>
       </Card>

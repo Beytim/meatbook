@@ -181,6 +181,7 @@ export const dict: Dict = {
   "money.addCashOut": { en: "Add Cash Out", am: "ወጪ ጨምር" },
   "money.cash": { en: "Cash", am: "ጥሬ ገንዘብ" },
   "money.mobileMoney": { en: "Mobile Money", am: "ሞባይል ገንዘብ" },
+  "money.mobile": { en: "Mobile", am: "ሞባይል" },
   "money.bank": { en: "Bank", am: "ባንክ" },
   "money.noTransactions": { en: "No transactions in this period.", am: "በዚህ ጊዜ ውስጥ ግብይት የለም።" },
   "money.amount": { en: "Amount", am: "መጠን" },

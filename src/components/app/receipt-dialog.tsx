@@ -120,6 +120,11 @@ export function ReceiptDialog({
   }, [sale, settings, effectiveLang, t]);
 
   const onReprint = React.useCallback(() => {
+    // Print the receipt using the browser's print dialog
+    // The receipt is rendered in the DOM inside the dialog
+    if (typeof window !== "undefined") {
+      window.print();
+    }
     toast.success(`${t("receipts.reprint")} #${sale?.number ?? ""}`);
   }, [sale, t]);
 
